@@ -73,8 +73,13 @@ function displayFriendQuest() {
                     let dailyLevelR = 0; // 收任务总等级
                     let eNum = 0; // E的个数（新增）
                     Object.values(fqDaily[date].fqSend).forEach(entry => {
-                        const lsMatch = entry[0].match(/L(\d+)(E)?/); // 提取 L 后面的数字和 E
-                        let levelS = parseInt(lsMatch[1], 10);
+                        const lsMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
+                        var levelS;
+                        if (lsMatch[1]) {
+                            levelS = parseInt(lsMatch[1], 10);
+                        } else {
+                            levelS = 22;
+                        }
                         if (lsMatch[2]) { // 如果有 E 等级乘3
                             eNum++;
                             levelS *= 3;
@@ -86,8 +91,13 @@ function displayFriendQuest() {
                         activityMap[date] = dailyLevelS;
                     }
                     Object.values(fqDaily[date].fqReceive).forEach(entry => {
-                        const lrMatch = entry[0].match(/L(\d+)(E)?/); // 提取 L 后面的数字和 E
-                        let levelR = parseInt(lrMatch[1], 10);
+                        const lrMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
+                        var levelR;
+                        if (lrMatch[1]) {
+                            levelR = parseInt(lrMatch[1], 10);
+                        } else {
+                            levelR = 22;
+                        }
                         if (lrMatch[2]) { // 如果有 E 等级乘3
                             levelR *= 3;
                         }
@@ -105,8 +115,13 @@ function displayFriendQuest() {
             const fqContactFlag = document.getElementById('fqContactFlag').textContent;
             // 发任务统计
             dataSend.forEach(entry => {
-                const lsMatch = entry[0].match(/L(\d+)(E)?/); // 提取 L 后面的数字和 E
-                let levelS = parseInt(lsMatch[1], 10);
+                const lsMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
+                var levelS;
+                if (lsMatch[1]) {
+                    levelS = parseInt(lsMatch[1], 10);
+                } else {
+                    levelS = 22;
+                }
                 if (lsMatch[2]) { // 如果有 E 等级乘3
                     levelS *= 3;
                 }
@@ -167,8 +182,13 @@ function displayFriendQuest() {
                 ['初级', '效率'], ['中级', '效率'], ['高级', '效率'], ['初级', '连胜'], ['中级', '连胜'], ['高级', '连胜'], 
                 ['初级'], ['中级'], ['高级'], ['中等'], ['困难'], ['地狱'], ['PvP']];
             dataReceive.forEach(entry => {
-                const lrMatch = entry[0].match(/L(\d+)(E)?/); // 提取 L 后面的数字和 E
-                let levelR = parseInt(lrMatch[1], 10);
+                const lrMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
+                var levelR;
+                if (lrMatch[1]) {
+                    levelR = parseInt(lrMatch[1], 10);
+                } else {
+                    levelR = 22;
+                }
                 if (lrMatch[2]) { // 如果有 E 等级乘3
                     levelR *= 3;
                 }
