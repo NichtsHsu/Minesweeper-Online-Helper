@@ -78,7 +78,7 @@ function displayFriendQuest() {
                         if (lsMatch[1]) {
                             levelS = parseInt(lsMatch[1], 10);
                         } else {
-                            levelS = 22;
+                            levelS = 66;
                         }
                         if (lsMatch[2]) { // 如果有 E 等级乘3
                             eNum++;
@@ -96,7 +96,7 @@ function displayFriendQuest() {
                         if (lrMatch[1]) {
                             levelR = parseInt(lrMatch[1], 10);
                         } else {
-                            levelR = 22;
+                            levelR = 66;
                         }
                         if (lrMatch[2]) { // 如果有 E 等级乘3
                             levelR *= 3;
@@ -120,7 +120,7 @@ function displayFriendQuest() {
                 if (lsMatch[1]) {
                     levelS = parseInt(lsMatch[1], 10);
                 } else {
-                    levelS = 22;
+                    levelS = 66;
                 }
                 if (lsMatch[2]) { // 如果有 E 等级乘3
                     levelS *= 3;
@@ -160,6 +160,7 @@ function displayFriendQuest() {
                 }
                 countS++;
                 sumLevelS += levelS;
+                console.log(countS, sumLevelS);
                 if (personStats[person].valid == 1) {
                     selectedCountS++;
                     // 累加等级
@@ -171,13 +172,13 @@ function displayFriendQuest() {
             });
             // 收任务统计
             var qrClassify = [
-                ['自定义', '场币', '竞技场', '宝石', '金币', '功勋', 
+                ['自定义', '场币', '竞技场', '宝石', '金币', '经验', 
                     '初盲', '中盲', '高盲', '困盲', '地盲', 
                     '初效', '中效', '高效', '初连', '中连', '高连', 
                     '初局', '中局', '高局', '中等', '困难', '地狱', 'PvP'],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             ];
-            const qrcKeyWords = [['自定义'], ['竞技场币'], ['竞技场'], ['宝石'], ['金币'], ['功勋'], 
+            const qrcKeyWords = [['自定义'], ['竞技场币'], ['竞技场'], ['宝石'], ['金币'], ['经验'], 
                 ['初级', '盲扫'], ['中级', '盲扫'], ['高级', '盲扫'], ['困难', '盲扫'], ['地狱', '盲扫'], 
                 ['初级', '效率'], ['中级', '效率'], ['高级', '效率'], ['初级', '连胜'], ['中级', '连胜'], ['高级', '连胜'], 
                 ['初级'], ['中级'], ['高级'], ['中等'], ['困难'], ['地狱'], ['PvP']];
@@ -187,7 +188,7 @@ function displayFriendQuest() {
                 if (lrMatch[1]) {
                     levelR = parseInt(lrMatch[1], 10);
                 } else {
-                    levelR = 22;
+                    levelR = 66;
                 }
                 if (lrMatch[2]) { // 如果有 E 等级乘3
                     levelR *= 3;
@@ -293,7 +294,7 @@ function displayFriendQuest() {
             let fqStasTotalNew = ['总计', countS, sumLevelS, sumChangeRate.toFixed(3), countR, sumLevelR, sumRsRate];
             displayMatrixBody([fqStasTotalNew, []], 'shortTableFqStats');
             displayMatrix(fqDailyMap, 'tableFqDaily');
-            let fqStasTotal = ['总计', countS, selectedLevelS, countR, selectedLevelR, selectedRsRate];
+            let fqStasTotal = ['总计', selectedCountS, selectedLevelS, selectedCountR, selectedLevelR, selectedRsRate];
             fqStats.unshift(fqStasTotal);
             displayMatrixBody(fqStats, 'tableFqStats');
             currentFqStats = fqStats;
