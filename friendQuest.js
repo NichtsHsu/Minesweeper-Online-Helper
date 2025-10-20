@@ -79,6 +79,7 @@ function displayFriendQuest() {
                             levelS = parseInt(lsMatch[1], 10);
                         } else {
                             levelS = 66;
+                            eNum++;
                         }
                         if (lsMatch[2]) { // 如果有 E 等级乘3
                             eNum++;
@@ -160,7 +161,6 @@ function displayFriendQuest() {
                 }
                 countS++;
                 sumLevelS += levelS;
-                console.log(countS, sumLevelS);
                 if (personStats[person].valid == 1) {
                     selectedCountS++;
                     // 累加等级
@@ -194,6 +194,7 @@ function displayFriendQuest() {
                     levelR *= 3;
                 }
                 // 按类型分类
+                var matchFinal = 0;
                 for (let cl = 0; cl < qrClassify[0].length; cl++) {
                     var match = 1;
                     for (let it = 0; it < qrcKeyWords[cl].length; it++) {
@@ -204,8 +205,12 @@ function displayFriendQuest() {
                     }
                     if (match == 1) {
                         qrClassify[1][cl] += levelR;
+                        matchFinal = 1;
                         break;
                     }
+                }
+                if (matchFinal == 0) { // 剩下的都是宝石
+                    qrClassify[1][3] += levelR;
                 }
             
                 // 按用户分类
