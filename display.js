@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             'shard390': '连胜',
             'shard391': '高难',
             'shard392': '无猜',
-            'shard393': 'pvp',
+            'shard393': 'pvp/功勋',
             'shard394': '命运任务',
             'shard395': '竞技场',
             'icecream447': '效率',
@@ -27,15 +27,24 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             'icecream450': '连胜',
             'icecream451': '高难',
             'icecream452': '无猜',
-            'icecream453': 'pvp',
+            'icecream453': 'pvp/功勋',
             'icecream454': '命运任务',
-            'icecream455': '竞技场'
+            'icecream455': '竞技场',
+            'cake507': '效率',
+            'cake508': '竞速',
+            'cake510': '连胜',
+            'cake511': '高难',
+            'cake512': '无猜',
+            'cake513': 'pvp/功勋',
+            'cake514': '命运任务',
+            'cake515': '竞技场'
         }
         var wheelQuests = [['月', '日', '任务内容', '活动任务类型']];
         for (let i = 1; i < allQuests.length; i++) {
             if (allQuests[i][4] == 'Wheel') {
                 if (i > 1 && ((allQuests[i][6] == 'shard394' && allQuests[i - 1][6] == 'shard394')
-                     || (allQuests[i][6] == 'icecream454' && allQuests[i - 1][6] == 'icecream454'))) {
+                     || (allQuests[i][6] == 'icecream454' && allQuests[i - 1][6] == 'icecream454')
+                     || (allQuests[i][6] == 'cake514' && allQuests[i - 1][6] == 'cake514'))) {
                     continue;
                 } else {
                     var wheelRow = [allQuests[i][2], allQuests[i][3], allQuests[i][5], wheelType[allQuests[i][6]]];
@@ -45,7 +54,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         }
         console.log(wheelQuests);
         var questsLeft = [
-            ['效率', '竞速', '连胜', '高难', '无猜', 'pvp', '命运任务', '竞技场'],
+            ['效率', '竞速', '连胜', '高难', '无猜', 'pvp/功勋', '命运任务', '竞技场'],
             [0, 0, 0, 0, 0, 0, 0, 0], // 0为每日剩余
             [0, 0, 0, 0, 0, 0, 0, 0] // 0为周期剩余
         ];

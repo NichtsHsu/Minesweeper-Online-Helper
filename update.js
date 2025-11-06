@@ -1243,6 +1243,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                                             allQuests[itemNum][6] = eventType.className.match(/shard\d+/)[0];
                                                         } else if (eventType && eventType.className.includes('icecream')) {
                                                             allQuests[itemNum][6] = eventType.className.match(/icecream\d+/)[0];
+                                                        } else if (eventType && eventType.className.includes('cake')) {
+                                                            allQuests[itemNum][6] = eventType.className.match(/cake\d+/)[0];
                                                         } else {
                                                             allQuests[itemNum][6] = '';
                                                         }
@@ -1332,6 +1334,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     allQuests[itemNum][6] = eventType.className.match(/shard\d+/)[0];
                                                 } else if (eventType && eventType.className.includes('icecream')) {
                                                     allQuests[itemNum][6] = eventType.className.match(/icecream\d+/)[0];
+                                                } else if (eventType && eventType.className.includes('cake')) {
+                                                    allQuests[itemNum][6] = eventType.className.match(/cake\d+/)[0];
                                                 } else {
                                                     allQuests[itemNum][6] = '';
                                                 }

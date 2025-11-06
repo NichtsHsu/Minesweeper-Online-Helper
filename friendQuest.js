@@ -63,7 +63,7 @@ function displayFriendQuest() {
             const dates = Object.keys(fqDaily).sort().reverse();
             // 按顺序遍历
             dates.forEach(date => {
-                if (date.includes(newMonth) && (date.slice(-2) == '04' || activityMap[date])) {
+                if (date.includes(newMonth) && (date.slice(-2) == '04' || typeof activityMap[date] === 'number')) {
                     if (activityMap[date]) {
                         sumActivity += Number(activityMap[date]);
                     }
