@@ -49,16 +49,26 @@ document.addEventListener('DOMContentLoaded', function() {
                             ];
                             var row = 0;        // 当前录入行
                             let gem = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(3)");
-                            hoverBox(gem);      // 鼠标悬浮展开宝石数量
+                            if (gem) {
+                                hoverBox(gem);      // 鼠标悬浮展开宝石数量
+                            }
                             let coin = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(4)");
-                            hoverBox(coin);     // 鼠标悬浮展开竞技场币数量
+                            if (coin) {
+                                hoverBox(coin);     // 鼠标悬浮展开竞技场币数量
+                            }
                             let ticket = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(5)");
-                            hoverBox(ticket);   // 鼠标悬浮展开竞技场门票数量
+                            if (ticket) {
+                                hoverBox(ticket);   // 鼠标悬浮展开竞技场门票数量
+                            }
                             let equipment = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(6) > div.col-xs-8.form-text > table > tbody > tr > td:nth-last-child(1) > span > span");
-                            hoverBox(equipment);   // 鼠标悬浮展开装备信息
+                            if (equipment) {
+                                hoverBox(equipment);   // 鼠标悬浮展开装备信息
+                            }
                             let trophy = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span");
-                            trophy.click(); // 20250120更新改为点击弹出
-                            hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
+                            if (trophy) {
+                                trophy.click(); // 20250120更新改为点击弹出
+                                hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
+                            }
     
                             let popoverList = document.querySelectorAll("div.popover.fade.top.in, div.popover.fade.left.in");
     
@@ -245,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
                             console.log(personalData);
     
-                            chrome.runtime.sendMessage({ action: 'sendPersonalData', personalData: personalData });
+                            // chrome.runtime.sendMessage({ action: 'sendPersonalData', personalData: personalData });
                             // saveAsCsv(personalData, '个人数据.csv');
     
                             // try {} catch (error) {

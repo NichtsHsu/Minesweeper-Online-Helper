@@ -31,13 +31,15 @@ function updateGems() {
         var t1 = 1000;
         var flag;
         var count = 1;
-        var countMax = 30;
+        var countMax = 100;
         extractGems(ti1);
         intervalGems = setInterval(() => {
             flag = document.getElementById('flag1').textContent;
-            if (flag == 1 || count > countMax) {
+            if (flag == 1) {
                 clearInterval(intervalGems);
                 chrome.tabs.remove(ti1, function() {});
+            } else if (count > countMax) {
+                clearInterval(intervalGems);
             } else {
                 count++;
             }
@@ -81,6 +83,7 @@ function updateGems() {
                     ];
                     var t0 = 100;
                     var tm = 10;
+                    var typeIndex = [1, 2, 0, 3, 4, 5, 6, 7, 8, 9]; // 修正黄玉顺序
                     try {
                         loadQuery = setInterval(() => {
                             let testItem = document.querySelector("#stat_table_body > tr:nth-child(1) > td:nth-child(3)");
@@ -95,9 +98,9 @@ function updateGems() {
                     // 查询宝石场币碎片
                     function queryGems() {
                         for (let t = 0; t < tm; t++) {
-                            priceMap[1][t] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 1}) > td:nth-child(3)`).textContent;
-                            priceMap[3][t] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 11}) > td:nth-child(3)`).textContent;
-                        }
+                                priceMap[1][typeIndex[t]] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 1}) > td:nth-child(3)`).textContent;
+                                priceMap[3][typeIndex[t]] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 11}) > td:nth-child(3)`).textContent;
+                            }
                         for (let i = 0; i < 4; i++) {
                             priceMap[5][i] = document.querySelector(`#stat_table_body > tr:nth-last-child(${4 - i}) > td:nth-child(3)`).textContent.replace(/ /g, "");
                         }
@@ -115,10 +118,11 @@ function updateGems() {
                         liType.click();
                         perPartsTypeQuery = setInterval(() => {
                             let itemName = document.querySelector("#stat_table_body > tr:nth-child(1) > td:nth-child(2) > span > span");
-                            if (itemName && (itemName.textContent.includes(chsGemName[type]) || itemName.textContent.includes(enGemName[1][type]))) {
+                            if (itemName && (itemName.textContent.includes(chsGemName[typeIndex[type]]) || itemName.textContent.includes(enGemName[1][typeIndex[type]]))) {
+                                console.log(itemName.textContent, chsGemName[typeIndex[type]])
                                 clearInterval(perPartsTypeQuery);
                                 let itemPrice = document.querySelector("#stat_table_body > tr:nth-child(1) > td:nth-child(3)");
-                                priceMap[7][type] = itemPrice.textContent.replace(/ /g, "");
+                                priceMap[7][typeIndex[type]] = itemPrice.textContent.replace(/ /g, "");
                                 if (type < tm - 1) { // 查找下一个
                                     queryPerPartsProgress(type + 1);
                                 } else { // type == 9 为最后一个，输出结果
@@ -152,9 +156,11 @@ function updateArenaTickets() {
             var countMax = 600;
             checkIntervalAt = setInterval(() => {
                 flag = document.getElementById('flag2').textContent;
-                if (flag == 1 || count > countMax) {
+                if (flag == 1) {
                     clearInterval(checkIntervalAt);
                     chrome.tabs.remove(ti2, function() {});
+                } else if (count > countMax) {
+                    clearInterval(checkIntervalAt);
                 } else {
                     count++;
                 }
@@ -390,9 +396,11 @@ function updateEquipmentStats() {
         extractEquip(tiEquip);
         intervalEquip = setInterval(() => {
             flag = document.getElementById('flagEquip').textContent;
-            if (flag == 1 || count > countMax) {
+            if (flag == 1) {
                 clearInterval(intervalEquip);
                 chrome.tabs.remove(tiEquip, function() {});
+            } else if (count > countMax) {
+                clearInterval(intervalEquip);
             } else {
                 count++;
             }
@@ -469,9 +477,11 @@ function updateStatistics() {
         extractStats(ti5);
         intervalStats = setInterval(() => {
             flag = document.getElementById('flag5').textContent;
-            if (flag == 1 || count > countMax) {
+            if (flag == 1) {
                 clearInterval(intervalStats);
                 chrome.tabs.remove(ti5, function() {});
+            } else if (count > countMax) {
+                clearInterval(intervalStats);
             } else {
                 count++;
             }
@@ -545,9 +555,11 @@ function updatePersonalData() {
         extractPd(ti3);
         intervalPd = setInterval(() => {
             flag = document.getElementById('flag3').textContent;
-            if (flag == 1 || count > countMax) {
+            if (flag == 1) {
                 clearInterval(intervalPd);
                 chrome.tabs.remove(ti3, function() {});
+            } else if (count > countMax) {
+                clearInterval(intervalPd);
             } else {
                 count++;
             }
@@ -595,20 +607,30 @@ function updatePersonalData() {
                     var t0 = 100;
                     try {
                         startPdQuery = setInterval(() => {
-                            let gem = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(3)");
-                            if (gem) {
+                            let userName = document.querySelector("#PlayerBlock > h2 > div.pull-left > span");
+                            if (userName) {
                                 clearInterval(startPdQuery);
-                                // let gem = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(3)");
-                                hoverBox(gem);      // 鼠标悬浮展开宝石数量
+                                let gem = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(3)");
+                                if (gem) {
+                                    hoverBox(gem);      // 鼠标悬浮展开宝石数量
+                                }
                                 let coin = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(4)");
-                                hoverBox(coin);     // 鼠标悬浮展开竞技场币数量
+                                if (coin) {
+                                    hoverBox(coin);     // 鼠标悬浮展开竞技场币数量
+                                }
                                 let ticket = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(5)");
-                                hoverBox(ticket);   // 鼠标悬浮展开竞技场门票数量
+                                if (ticket) {
+                                    hoverBox(ticket);   // 鼠标悬浮展开竞技场门票数量
+                                }
                                 let equipment = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(6) > div.col-xs-8.form-text > table > tbody > tr > td:nth-last-child(1) > span > span");
-                                hoverBox(equipment);   // 鼠标悬浮展开装备信息
+                                if (equipment) {
+                                    hoverBox(equipment);   // 鼠标悬浮展开装备信息
+                                }
                                 let trophy = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span");
-                                trophy.click(); // 20250120更新改为点击弹出
-                                hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
+                                if (trophy) {
+                                    trophy.click(); // 20250120更新改为点击弹出
+                                    hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
+                                }
         
                                 let popoverList = document.querySelectorAll("div.popover.fade.top.in, div.popover.fade.left.in");
         
@@ -791,8 +813,8 @@ function updatePersonalData() {
                                 row += 5;
                                 
                                 /* 读昵称 */
-                                let userName = document.querySelector("#PlayerBlock > h2 > div.pull-left > span").textContent;
-                                personalData[row][0] = userName;
+                                // let userName = document.querySelector("#PlayerBlock > h2 > div.pull-left > span").textContent;
+                                personalData[row][0] = userName.textContent;
                 
                                 console.log(personalData);
         
@@ -832,9 +854,11 @@ function updateEconomy() {
         extractEco(tiE);
         intervalEco = setInterval(() => {
             flag = document.getElementById('flagPe').textContent;
-            if (flag == 1 || count > countMax) {
+            if (flag == 1) {
                 clearInterval(intervalEco);
                 chrome.tabs.remove(tiE, function() {});
+            } else if (count > countMax) {
+                clearInterval(intervalEco);
             } else {
                 count++;
             }
@@ -1151,9 +1175,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var countMax = 120;
             checkIntervalWh = setInterval(() => {
                 flag = document.getElementById('flagWheel').textContent;
-                if (flag == 1 || count > countMax) {
+                if (flag == 1) {
                     clearInterval(checkIntervalWh);
                     chrome.tabs.remove(ti, function() {});
+                } else if (count > countMax) {
+                    clearInterval(checkIntervalWh);
                 } else {
                     count++;
                 }

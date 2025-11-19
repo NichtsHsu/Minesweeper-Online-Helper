@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ];
                         var t0 = 100;
                         var tm = 10;
+                        var typeIndex = [1, 2, 0, 3, 4, 5, 6, 7, 8, 9]; // 修正黄玉顺序
                         try {
                             let category0 = document.querySelector("#category_dropdown");
                             if (category0.textContent == '分类：全部' || category0.textContent == 'Category: Best offers') {
@@ -53,8 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 查询宝石场币碎片
                         function queryGems() {
                             for (let t = 0; t < tm; t++) {
-                                priceMap[1][t] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 1}) > td:nth-child(3)`).textContent;
-                                priceMap[3][t] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 11}) > td:nth-child(3)`).textContent;
+                                priceMap[1][typeIndex[t]] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 1}) > td:nth-child(3)`).textContent;
+                                priceMap[3][typeIndex[t]] = document.querySelector(`#stat_table_body > tr:nth-child(${t + 11}) > td:nth-child(3)`).textContent;
                             }
                             for (let i = 0; i < 4; i++) {
                                 priceMap[5][i] = document.querySelector(`#stat_table_body > tr:nth-last-child(${4 - i}) > td:nth-child(3)`).textContent.replace(/ /g, "");
@@ -73,10 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             liType.click();
                             perPartsTypeQuery = setInterval(() => {
                                 let itemName = document.querySelector("#stat_table_body > tr:nth-child(1) > td:nth-child(2) > span > span");
-                                if (itemName && (itemName.textContent.includes(chsGemName[type]) || itemName.textContent.includes(enGemName[1][type]))) {
+                                if (itemName && (itemName.textContent.includes(chsGemName[typeIndex[type]]) || itemName.textContent.includes(enGemName[1][typeIndex[type]]))) {
+                                    console.log(itemName.textContent, chsGemName[typeIndex[type]])
                                     clearInterval(perPartsTypeQuery);
                                     let itemPrice = document.querySelector("#stat_table_body > tr:nth-child(1) > td:nth-child(3)");
-                                    priceMap[7][type] = itemPrice.textContent.replace(/ /g, "");
+                                    priceMap[7][typeIndex[type]] = itemPrice.textContent.replace(/ /g, "");
                                     if (type < tm - 1) { // 查找下一个
                                         queryPerPartsProgress(type + 1);
                                     } else { // type == 9 为最后一个，输出结果
