@@ -351,7 +351,12 @@ function displayTables() {
     var statistics;
     var personalData;
     var equip; // 装备数据
-    var equipNew; // 使用装备也的装备加成情况
+    var equipNew = [
+        [],
+        ['1x', '1x', '1x', '0', '0', '0-0', '1x', '1x', '1x', '0%'],
+        [],
+        ['1x', '1x', '1x', '1x', '1x', '1x', '1x', '1x', '1x']
+    ]; // 使用装备页的装备加成情况，默认1x避免空值报错
     var lm = 8; // 最大等级
     var tm = 10; // 多少种竞技场
     var hp2mc = 56.6; // 功勋点折算金币
@@ -422,9 +427,13 @@ function displayTables() {
             if (result.equipStats) {
                 equipNew = result.equipStats;
                 console.log('装备加成：', result.equipStats);
-                var rank = personalData[24][1] / 100 | 0; // 军衔
-                var questLevelMax = rank + 1 + +equip[1][6];
-                equipNew[1][5] = (questLevelMax / 2 | 0) + '-' + questLevelMax;
+                var rank = (Number(personalData[24][1]) || 0) / 100 | 0; // 军衔
+                var questLevelMax = rank + 1 + (Number(equip[1][6]) || 0);
+                // 优先使用装备页面抓到的“任务等级”，仅在缺失时才按军衔+任务加成兜底估算
+                const questLevelRaw = String(equipNew?.[1]?.[5] ?? '').trim();
+                if (!questLevelRaw || questLevelRaw === '0') {
+                    equipNew[1][5] = (questLevelMax / 2 | 0) + '-' + questLevelMax;
+                }
                 displayTextMatrix(equipNew, 'table3-4'); 
             }
             // displayMatrix(equip, 'table3-4');    // 显示装备加成
@@ -960,11 +969,11 @@ function displayTables() {
                 // arenaExpectTime[t] = [];
                 for (let l = 0; l < lm; l++) {
                     // arenaValue[3 * t + 1][l + 2] = xType[t] * coef[0] * xL[l] / hp2ex * hp2mc + xType[t] * coef[1] * xL[l] + xType[t] * coef[2] * xL[l] * gemsPrice[3][acInd[t]];
-                    var exCoe = parseFloat(equipNew[1][0].replace('x', '')); // 经验加成
-                    var mcCoe = parseFloat(equipNew[1][1].replace('x', '')); // 金币加成
-                    var acCoe = parseFloat(equipNew[1][6].replace('x', '')); // 场币加成
-                    var actCoe = parseFloat(equipNew[1][7].replace('x', '')); // 活跃加成
-                    var epCoe = parseFloat(equipNew[1][8].replace('x', '')); // 活动点加成
+                    var exCoe = parseFloat(String(equipNew?.[1]?.[0] ?? '1x').replace('x', '')) || 1; // 经验加成
+                    var mcCoe = parseFloat(String(equipNew?.[1]?.[1] ?? '1x').replace('x', '')) || 1; // 金币加成
+                    var acCoe = parseFloat(String(equipNew?.[1]?.[6] ?? '1x').replace('x', '')) || 1; // 场币加成
+                    var actCoe = parseFloat(String(equipNew?.[1]?.[7] ?? '1x').replace('x', '')) || 1; // 活跃加成
+                    var epCoe = parseFloat(String(equipNew?.[1]?.[8] ?? '1x').replace('x', '')) || 1; // 活动点加成
                     // 打竞技场的期望收益
                     // arenaValue[2 * t + 1][2 * l + 2] = (xType[t] * coef[0] * xL[l] * exCoe / hp2ex * hp2mc // 经验折算为功勋
                     //                                  + xType[t] * coef[1] * xL[l] * mcCoe // 金币
@@ -1698,7 +1707,7 @@ function displayTextMatrix(matrix, tableId, width = 0) {
         let row = tbody.insertRow();
         for (let j = 0; j < cols; j++) {
             let cell = row.insertCell();
-            cell.textContent = matrix[i][j].toString();
+            cell.textContent = String(matrix?.[i]?.[j] ?? '');
         }
     }
 }

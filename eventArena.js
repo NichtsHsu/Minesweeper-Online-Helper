@@ -13,7 +13,12 @@ function displayEventArena() {
         // chrome.storage.local.set({ eaPriceMap: eapMap }); // 改数据用，正常情况勿启用
         // console.log('历史活动竞技场门票价格:', eapMap);
         const dates = Object.keys(eapMap);
-        values = result.eaPrice[1];
+        if (result.eaPrice && result.eaPrice[1]) {
+            values = result.eaPrice[1];
+        } else if (dates.length > 0) {
+            dates.sort((a, b) => Number(b) - Number(a));
+            values = eapMap[dates[0]] || values;
+        }
         if (values) {
             dates.sort((a, b) => Number(b) - Number(a)); // 日期按降序排列
             /* 显示最新数据 */
@@ -23,7 +28,7 @@ function displayEventArena() {
                 ['E:mc/p', 0, 0, 0, 0, 0, 0, 0, 0]
             ];
             if (result.equipStats) {
-                epCoe = parseFloat(String(result.equipStats[1][8]).replace('x', ''));
+                epCoe = parseFloat(String(result.equipStats?.[1]?.[8] ?? '1x').replace('x', '')) || 1;
             }
             for (let i = 0; i < 8; i++) {
                 document.getElementById(`value${i}`).innerText = values[i];
