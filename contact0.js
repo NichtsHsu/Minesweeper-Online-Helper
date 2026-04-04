@@ -4,10 +4,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const url1 = tab1[0].url;
         if (url1.includes('https://minesweeper.online/') && url1.includes('player/')) {
             var uid = url1.match(/player\/(\d+)/)[1];
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
-                button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
         }
     });
 });
@@ -48,6 +48,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             chrome.storage.local.set({ contactsList: contactsList });
         });
 
-        document.getElementById('buttonAddFriend').style.backgroundColor = '#4caf50';
+        setPopupButtonState('buttonAddFriend', 'success');
     }
 });

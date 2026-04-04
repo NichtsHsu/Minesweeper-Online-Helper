@@ -11,25 +11,35 @@
 
     <!-- 标题栏 -->
     <div id="header">
-        <h1>Minesweeper Online Helper</h1>
+        <div class="headerInner">
+            <button id="toggleNav" class="navToggleButton" aria-label="隐藏导航" title="隐藏导航">&lt;</button>
+            <h1>Minesweeper Online Helper</h1>
+            <span class="subTitle">Data Cockpit for Markets, Events and Personal Stats</span>
+        </div>
     </div>
 
     <div id="container">
         <!-- 导航栏 -->
         <div id="navbar">
+            <div class="navGroupTitle">核心数据</div>
             <a href="#" id="nav-statistic">游戏数据</a>
             <a href="#" id="nav-price">当前市价</a>
             <a href="#" id="nav-priceDaily">历史价格</a>
             <a href="#" id="nav-resource">个人数据</a>
             <a href="#" id="nav-eventShop">活动商店</a>
             <a href="#" id="nav-perfect">完美装备</a>
-            <a href="#" id="nav-contacts">好友</a>
             <a href="#" id="nav-pbOfBV">PB数据</a>
+
+            <div class="navGroupTitle">社交与工具</div>
+            <a href="#" id="nav-contacts">好友</a>
+            <a href="#" id="update">刷新数据</a>
+
             <a href="#" id="nav-eventArena" class="event" style="display: none;">活动竞技场</a>
             <a href="#" id="nav-friendQuest" class="event" style="display: none;">友谊任务</a>
             <a href="#" id="nav-wheel" class="event" style="display: none;">命运转盘</a>
             <a href="#" id="nav-eventQuest" class="event" style="display: none;">全球任务</a>
-            <a href="#" id="update">刷新数据</a>
+
+            <div class="navGroupTitle">系统</div>
             <a href="#" id="nav-setting">设置</a>
             <a href="#" id="nav-help">帮助</a>
             <a href="#" id="github">@GitHub</a>
@@ -85,17 +95,17 @@
                         <div class="atv" id="atv1Best">最赚</div>
                         <div class="atv" id="atv1Mid">次赚</div>
                         <div class="atv" id="atv1Worst">卖掉赚</div><br><br>
-                        <table id="tableArenaValue" class="ticketTable0"></table><br>
+                        <table id="tableArenaValue" class="ticketTable0" data-no-pagination></table><br>
                     </div>
                     <div class="fqContentSon">
                         <div class="atv" id="atv2Best">最赚</div>
                         <div class="atv" id="atv2Worst">最亏</div><br><br>
-                        <table id="tableArenaRate" class="ticketTable0"></table><br>
+                        <table id="tableArenaRate" class="ticketTable0" data-no-pagination></table><br>
                     </div>
                     <div class="fqContentSon">
                         <div class="atv" id="atv2Best">最赚</div>
                         <div class="atv" id="atv2Worst">最亏</div><br><br>
-                        <table id="tableArenaTimeRate" class="ticketTable0"></table><br>
+                        <table id="tableArenaTimeRate" class="ticketTable0" data-no-pagination></table><br>
                     </div>
                 </div>
             </div>
@@ -103,23 +113,7 @@
                 <h1>历史市场最低价比较</h1>
                 <span class="plainText">查看类别：</span>
                 <select id="priceDailySelect" class="inputBox wideInputBox2"></select><br><br>
-                <div id="editSelectDiv" style="display:none;">
-                    <span class="plainText">手动修改数据：</span>
-                    <input type="date" id="editPriceDate" class="inputBox wideInputBox2 inputBlank">
-                    <span class="blank"></span>
-                    <select id="editGems" class="inputBox wideInputBox1" style="display:none;"></select>
-                    <select id="editAcs" class="inputBox wideInputBox1" style="display:none;"></select>
-                    <select id="editAt" class="inputBox wideInputBox1" style="display:none;"></select>
-                    <select id="editAl" class="inputBox wideInputBox1" style="display:none;"></select>
-                    <select id="editParts" class="inputBox wideInputBox1" style="display:none;"></select>
-                    <span class="blank"></span>
-                    <div id="confirmEdit" style="display:none;">
-                        <span class="plainText">将价格修改为：</span>
-                        <input type="number" id="editNewPrice" class="inputBox wideInputBox1 inputBlank">
-                        <span class="blank"></span>
-                        <button id="saveEditPrice">确认</button>
-                    </div>
-                </div>
+                <span class="plainText" style="font-size:12px;opacity:0.6;">双击单元格可直接编辑数据</span>
                 <br><br>
                 <table id="priceDailyTable" class="ticketTable"></table>
                 <span id="noPriceDaily" class="plainText" style="display:none;">暂无历史数据</span>
@@ -129,16 +123,17 @@
                 <h1>总资源数</h1>
                 <button id="playerPage">打开我的主页</button>
                 <span class="blank"></span>
-                <button id="updatePersonalData">刷新个人数据</button>
-                <span class="blank"></span>
-                <button id="showPrDaily">展开每日资源变化</button><br><br>
+                <button id="updatePersonalData">刷新个人数据</button><br><br>
                 <div id="showPrdFlag" style="display:none;">0</div>
                 <div id="flagPe" style="display:none;">0</div>
                 <table id="table3-1"></table>
                 <h1>明细</h1>
+                <h2>宝石和竞技场币</h2>
                 <span id="noPrData" class="plainText" style="display:none;">暂无资源数据</span>
                 <table id="table3-2"></table><br>
-                <table id="prDaily" class="ticketTable" style="display:none;"></table><br>
+                <h2>每日变化</h2>
+                <table id="prDaily" class="ticketTable"></table><br>
+                <h2>竞技场门票</h2>
                 <table id="table3-3" class="ticketTable"></table>
                 <h1>装备加成</h1>
                 <button id="equipmentPage">打开装备页</button>
@@ -150,16 +145,20 @@
                 <h1>财产估值</h1>
                 <button id="personEcoPage">打开游戏经济页</button>
                 <span class="blank"></span>
-                <button id="updateEconomy">刷新财产估值</button>
-                <span class="blank"></span>
-                <button id="showPeDaily">展开每日财产变化</button><br><br>
+                <button id="updateEconomy">刷新财产估值</button><br><br>
                 <div id="showPedFlag" style="display:none;">0</div>
                 <table id="tablePe"></table><br>
-                <table id="peDaily" class="ticketTable" style="display:none;"></table>
+                <table id="peDaily" class="ticketTable"></table>
                 <span id="noPeDaily" class="plainText" style="display:none;">暂无财产数据</span><br>
                 <h1>奖杯</h1>
-                <!-- <div class="atv">总奖杯数：</div><div class="atv" id="tropNum"></div><div class="atv">排名：</div><div class="atv" id="tropRank"></div> -->
-                <table id="tableTrophy" class="noempty"></table><br><br>
+                <div class="flexContent trophyFlex">
+                    <div class="flexContentSon">
+                        <table id="tableTrophySummary" class="noempty ticketTable"></table>
+                    </div>
+                    <div class="flexContentSon">
+                        <table id="tableTrophyDetail" class="noempty ticketTable" data-no-pagination></table>
+                    </div>
+                </div>
             </div>
             <div id="eventShop" class="page">
                 <div class="flexContent">
@@ -169,14 +168,14 @@
                         <span class="plainText">所有价格为估计值或期望，仅供参考。数据通过当前市场最低价计算。</span><br>
                         <span class="plainText">功勋为固定的参考值，不考虑代币售价；宝石以最贵的一项为准；</span><br>
                         <span class="plainText">门票包为平均值；所有装备均为拆解碎片价</span><br><br>
-                        <table id="tableEventShop" class="ticketTable widthSet"></table>
+                        <div class="tableWrap"><table id="tableEventShop" class="ticketTable" data-no-pagination></table></div>
                     </div>
                     <div class="flexContentSon">
                         <h1>完美线</h1>
                         <span class="plainText">完美线的计算不考虑锦标赛</span><br>
                         <span class="plainText">点击“自定义”下方单元格可以手动设定目标，</span><br>
                         <span class="plainText">按“Enter”保存，按“Esc”或点击页面退出</span><br><br>
-                        <table id="tablePerfectLine"></table>
+                        <table id="tablePerfectLine" data-no-pagination></table>
                     </div>
                 </div>
             </div>
@@ -193,6 +192,7 @@
             <div id="contacts" class="page">
                 <span class="plainText">根据uid添加好友：</span>
                 <input id="addFriendUid" class="inputBox wideInput">
+                <span class="blank"></span>
                 <button id="addFriend">添加</button>
                 <div id="addFriendFlag" style="display:none;">0</div>
                 <span class="blank"></span>
@@ -200,11 +200,13 @@
                 <span id="noContacts" class="plainText" style="display:none;">暂无好友</span>
                 <br><br>
                 <div id="contactsArea">
-                    <span class="plainText">点击好友昵称或uid可直接复制。</span><br><br>
+                    <span class="plainText" style="font-size:12px;opacity:0.6;">点击好友昵称或uid可直接复制。</span><br><br>
                     <button id="sortFriendName">昵称排序</button><div id="friendNameDesc" style="display:none;">0</div>
                     <button id="sortFriendUid">uid排序</button><div id="friendUidDesc" style="display:none;">0</div>
                     <button id="sortFriendDefalt">默认排序</button><div id="sortFriendMethod" style="display:none;">0</div>
                     <span class="blank"></span>
+                    <span class="blank"></span>
+                    <button id="updateFriendNames">更新好友用户名</button>
                     <span class="blank"></span>
                     <button id="editFriend">管理好友</button>
                     <button id="editFriendOver" style="display: none;">完成</button>
@@ -242,15 +244,15 @@
                 <span id="noPbOfBV" class="plainText" style="display:none;">暂无各BV的PB数据，可在“我的游戏”页面通过插件弹出页“统计我的游戏”收集，或点击“重新统计”生成。</span>
                 <div class="flexContent">
                     <div class="flexContentSon">
-                        <table id="pbOfBVTable" class="ticketTable"></table>
+                        <div class="tableWrap"><table id="pbOfBVTable" class="ticketTable" data-no-pagination></table></div>
                     </div>
-                    <div class="flexContentSon">
-                        <table id="pbOfBVTableNew" class="ticketTable"></table>
+                    <div class="flexContentSon" style="display: none;">
+                        <table id="pbOfBVTableNew" class="ticketTable" data-no-pagination></table>
                     </div>
                 </div>
-                <div class="flexContent">
+                <div class="flexContent" style="display: none;">
                     <div class="flexContentSon">
-                        <table id="pkResult" class="ticketTable"></table>
+                        <table id="pkResult" class="ticketTable" data-no-pagination></table>
                     </div>
                     <div class="flexContentSon" id="pkRule" style="display: none;">
                         <br>
@@ -274,7 +276,7 @@
                 <button id="dailyPB-nf-7" class="pbOfBVButton dailyPBTypeButton">盲扫</button><br>
                 <button id="dailyPB-lastYear" class="pbOfBVButton dailyPBYearButton activeButton">近一年</button>
                 <br><br>
-                <table id="dailyPBTable"></table>
+                <table id="dailyPBTable" data-no-pagination></table>
                 <span id="nodailyPB" class="plainText" style="display:none;">暂无每日PB数据，可在“我的游戏”页面通过插件弹出页“统计我的游戏”收集，或点击“重新统计”生成。</span>
                 <div id="dailyPBTooltip"></div>
             </div>
@@ -331,7 +333,7 @@
                     <button id="saveEaEditPrice">确认</button>
                 </div>
                 <br><br>
-                <table id="tableEa" class="ticketTable"></table>
+                <table id="tableEa" class="ticketTable" data-no-pagination></table>
                 <span id="noEapDaily" class="plainText" style="display:none;">暂无历史价格数据</span>
             </div>
             <div id="friendQuest" class="page">
@@ -342,11 +344,8 @@
                 <button id="updateFq">刷新五页</button>
                 <span class="blank"></span>
                 <div id="flagFqAll" style="display:none;">0</div>
-                <button id="updateFqAll">刷新全部</button>
-                <span class="blank"></span>
+                <button id="updateFqAll">刷新全部</button><br><br>
                 <div id="detailFlag" style="display:none;">0</div>
-                <button id="detailFq">展开详情</button>
-                <span class="blank"></span>
                 <div id="fqContactFlag" style="display:none;">0</div>
                 <button id="fqShowContact" style="display:none;">只看好友</button><br><br>
                 <table id="shortTableFqStats"  class="noempty sortTable">
@@ -427,6 +426,12 @@
                 </div>
             </div>
             <div id="setting" class="page">
+                <h1>保存与数据</h1>
+                <button id="saveSetting">保存设置</button><span id="saveSucc" class="plainText" style="display:none">保存成功！</span><span class="blank"></span>
+                <button id="resetSetting">重置设置</button><span class="blank"></span>
+                <button id="backupButton">备份数据</button><span class="blank"></span>
+                <button id="restoreButton">恢复数据</button>
+                <input type="file" id="restoreInput" style="display:none" accept=".json" />
                 <h1>网站设置</h1>
                 <span class="plainText">主题：</span>
                 <select id="themeSelect" class="inputBox wideInputBox1"></select>
@@ -443,15 +448,18 @@
                 <span class="plainText">当前登录账号uID（个人主页网址中的数字）：</span>
                 <input id="personalId" class="inputBox wideInput"><span id="pIdNow" style="display:none"></span>
                 <h1>参数设置</h1>
-                <span class="plainText">活跃度转化率（默认2.5）：</span><input id="act2ep" class="inputBox inputBlank">
+                <span class="plainText">活跃度转化率：</span><input id="act2ep" class="inputBox inputBlank" placeholder="2.5">
                 <span class="blank"></span>
                 <span class="plainText">活动物品/活跃度</span><br>
-                <span class="plainText">活动物品估价（默认56.6）：</span><input id="ep2mc" class="inputBox inputBlank">
+                <span class="plainText">活动物品估价：</span><input id="ep2mc" class="inputBox inputBlank" placeholder="56.6">
                 <span class="blank"></span>
                 <span class="plainText">金币/活动物品</span><br>
-                <span class="plainText">功勋点估价（默认56.6）：</span><input id="hp2mc" class="inputBox inputBlank">
+                <span class="plainText">功勋点估价：</span><input id="hp2mc" class="inputBox inputBlank" placeholder="56.6">
                 <span class="blank"></span>
                 <span class="plainText">默认以转换完美碎片的价格为准</span><br>
+                <h1>表格显示</h1>
+                <span class="plainText">每页显示条数：</span><input id="tablePageSize" class="inputBox inputBlank" placeholder="10">
+                <span class="blank"></span><br>
                 <h1>自动刷新</h1>
                 <div class="inRow">
                     <span class="plainText">自动刷新数据</span>
@@ -564,19 +572,14 @@
                     </tr>
                 </table>
                 <br><br>
-                <div class="inRow">
-                    <button id="saveSetting">保存</button><span id="saveSucc" class="plainText" style="display:none">保存成功！</span>
-                </div>
-                <h1>数据备份与恢复</h1>
-                <button id="backupButton">备份数据</button><br><br>
-                <button id="restoreButton">恢复数据</button>
-                <input type="file" id="restoreInput" style="display:none" accept=".json" /><br>
             </div>
             <div id="help" class="page">
                 <div id="helpMarkDown" class="markdown-body"></div>
             </div>
         </div>
     </div>
+
+    <div id="toastHost" aria-live="polite" aria-atomic="true"></div>
     
     <script src="index.js"></script>
     <script src="display.js"></script>

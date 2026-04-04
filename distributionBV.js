@@ -2,10 +2,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('buttonDistributionBV');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url == 'https://minesweeper.online/cn/my-games' || tab1[0].url == 'https://minesweeper.online/my-games') {
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
-                button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -223,16 +223,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
         }
     });
     const button500 = document.getElementById('buttonDistributionBV500');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url == 'https://minesweeper.online/cn/my-games' || tab1[0].url == 'https://minesweeper.online/my-games') {
-            button500.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button500, 'ready');
             button500.style.cursor = 'pointer'; // 鼠标指针样式
             button500.addEventListener('click', function () {
-                button500.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button500, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -457,7 +457,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button500.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button500, 'disabled');
         }
     });
 });
@@ -467,7 +467,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let BVDistribution = request.BVDistribution;
         let level = request.level;
         console.log('收到我的游戏数据：', BVDistribution);   // 在控制台打出结果
-        document.getElementById('buttonDistributionBV').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        setPopupButtonState('buttonDistributionBV', 'success');
         if (level) { // 不考虑自定义
             chrome.storage.local.get(['BVMap', 'pbOfBV', 'pbOfBVMap'], function(result) {
                 const BVMap = result.BVMap || {};
@@ -557,7 +557,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let BVDistribution = request.BVDistribution;
         let level = request.level;
         console.log('收到我的游戏数据：', BVDistribution);   // 在控制台打出结果
-        document.getElementById('buttonDistributionBV500').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        setPopupButtonState('buttonDistributionBV500', 'success');
         if (level) { // 不考虑自定义
             chrome.storage.local.get(['BVMap', 'pbOfBV', 'pbOfBVMap'], function(result) {
                 const BVMap = result.BVMap || {};

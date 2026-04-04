@@ -511,22 +511,11 @@ document.addEventListener('DOMContentLoaded', function() {
             sortTable(index);
         });
     });
-    // 展开和收起用户分类表
-    document.getElementById('detailFq').addEventListener('click', function () {
-        if (document.getElementById('detailFlag').textContent == 1) {
-            document.getElementById('detailFq').textContent = '展开详情';
-            document.getElementById('shortTableFqStats').style.display = "table";
-            document.getElementById('tableFqStats').style.display = "none";
-            document.getElementById('detailFlag').textContent = 0;
-            document.getElementById('fqShowContact').style.display = "none";
-        } else {
-            document.getElementById('detailFq').textContent = '收起详情';
-            document.getElementById('shortTableFqStats').style.display = "none";
-            document.getElementById('tableFqStats').style.display = "table";
-            document.getElementById('detailFlag').textContent = 1;
-            document.getElementById('fqShowContact').style.display = "inline";
-        }
-    });
+    // 默认显示详情表
+    document.getElementById('shortTableFqStats').style.display = "none";
+    document.getElementById('tableFqStats').style.display = "table";
+    document.getElementById('detailFlag').textContent = 1;
+    document.getElementById('fqShowContact').style.display = "inline";
     // 手动修改昨日活跃度
     document.getElementById('updateLastAct').addEventListener('click', function () {
         const lastActNew = document.getElementById('lastActNew').value;

@@ -2,12 +2,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     /* 初始化主题 */
     chrome.storage.local.get(['themeMap', 'theme'], function (result) {
-        var themeMap = result.themeMap;
+        var themeMap = getResolvedThemeMap(result.themeMap);
         var theme = result.theme;
-        if (!themeMap) { // 无主题字典则初始化
-            themeMap = defaultThemes;
-            chrome.storage.local.set({ themeMap: themeMap });
-        }
+        chrome.storage.local.set({ themeMap: themeMap });
         const themeSelect = document.getElementById('themeSelect');
         const theme0 = new Option('默认', '默认');
         themeSelect.add(theme0); // 先添加默认选项
@@ -21,40 +18,29 @@ document.addEventListener('DOMContentLoaded', function() {
             theme = '默认'; // 无当前应用的主题则置为"默认"
             chrome.storage.local.set({ theme: theme });
         }
-        themeSelect.value = theme; // 下拉菜单置于当前应用的主题
-        document.documentElement.classList.add(theme); // 设置应用的主题
-        if (Object.keys(themeMap[theme]).length > 0) { // 字典中有内容说明是自定义的主题
-            for (const [key, value] of Object.entries(themeMap[theme])) {
-                if (key != 'themeName' && key != 'introduce') {
-                    document.documentElement.style.setProperty(`--${key}`, value[0]);
-                }
-            }
+        if (!themeMap[theme]) {
+            theme = '默认';
+            chrome.storage.local.set({ theme: theme });
         }
+        themeSelect.value = theme; // 下拉菜单置于当前应用的主题
+        applyTheme(theme, themeMap);
+        refreshThemeDependentViews();
     });
     /* 选择主题 */
     document.getElementById('themeSelect').addEventListener('change', function() {
         var newTheme = document.getElementById('themeSelect').value;
         chrome.storage.local.get(['themeMap', 'theme'], function (result) {
-            var themeMap = result.themeMap || {};
+            var themeMap = getResolvedThemeMap(result.themeMap);
             var theme = result.theme;
             if (theme) {
                 if (theme != newTheme) {
+                    if (!themeMap[newTheme]) {
+                        newTheme = DEFAULT_THEME_NAME;
+                    }
                     chrome.storage.local.set({ theme: newTheme });
-                    for (let themeName in themeMap) {
-                        document.documentElement.classList.remove(themeName); // 清空其他主题
-                    }
-                    document.documentElement.style = '';
-                    document.documentElement.classList.add(newTheme); // 设置应用的主题
-                    if (Object.keys(themeMap[newTheme]).length > 0) { // 字典中有内容说明是自定义的主题
-                        for (const [key, value] of Object.entries(themeMap[newTheme])) {
-                            if (key != 'themeName' && key != 'introduce') {
-                                document.documentElement.style.setProperty(`--${key}`, value[0]);
-                            }
-                        }
-                    }
-                    displayTables();
-                    displayBVPB();
-                    displayPriceDaily();
+                    chrome.storage.local.set({ themeMap: themeMap });
+                    applyTheme(newTheme, themeMap);
+                    refreshThemeDependentViews();
                 }
             }
         });
@@ -73,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (dataIn['themeName']) { // 检查themeName字段，成功则认为格式正确
                     const themeName = dataIn['themeName'];
                     chrome.storage.local.get(['themeMap', 'theme'], function (result) {
-                        var themeMap = result.themeMap || {};
+                        var themeMap = getResolvedThemeMap(result.themeMap);
                         var theme = result.theme;
                         themeMap[themeName] = dataIn; // 以themeName的值为键存入主题字典
                         chrome.storage.local.set({ themeMap: themeMap });
@@ -85,11 +71,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         oldTheme.forEach(option => option.remove()); // 删除重名的选项 保证添加到末端
                         const newTheme = new Option(themeName, themeName, 0, 1);
                         themeSelect.add(newTheme);
-                        for (const [key, value] of Object.entries(dataIn)) {
-                            if (key != 'themeName' && key != 'introduce') {
-                                document.documentElement.style.setProperty(`--${key}`, value[0]);
-                            }
-                        }
+                        applyTheme(theme, themeMap);
+                        refreshThemeDependentViews();
                     });
                 } else {
                     window.alert('文件格式错误');
@@ -104,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
     /* 清空自定义主题 */
     document.getElementById('clearTheme').addEventListener('click', function () {
         chrome.storage.local.get(['themeMap', 'theme'], function (result) {
-            var themeMap = defaultThemes;
+            var themeMap = getResolvedThemeMap(defaultThemes);
             var theme = '默认';
             chrome.storage.local.set({ themeMap: themeMap });
             chrome.storage.local.set({ theme: theme });
@@ -118,8 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     themeSelect.add(theme1); // 依次添加每个选项
                 }
             }
-            document.documentElement.style = '';
-            document.documentElement.className = theme; // 设置应用的主题
+            applyTheme(theme, themeMap);
+            refreshThemeDependentViews();
         });
     });
     /* 下载主题模板 */
@@ -156,6 +139,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showPage(pageId) {
+    if (typeof window.resetMainButtonStates === 'function') {
+        window.resetMainButtonStates();
+    }
+
     // 隐藏所有页面
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
@@ -171,9 +158,158 @@ function showPage(pageId) {
 
     // 为对应导航栏链接添加活动样式
     document.getElementById('nav-' + pageId).classList.add('active');
+
+    // 设置页参数项统一使用 placeholder 展示当前值，避免残留输入遮住 placeholder。
+    if (pageId === 'setting') {
+        clearSettingValueInputs();
+    }
+
+    // 每次切换选项卡时刷新该页面表格分页，保证配置变更后立即生效。
+    if (typeof window.refreshPageTablePagination === 'function') {
+        window.refreshPageTablePagination(pageId);
+    }
+}
+
+function clearSettingValueInputs() {
+    const ids = [
+        'act2ep',
+        'ep2mc',
+        'hp2mc',
+        'spArenaCoef',
+        'spngArenaCoef',
+        'nfArenaCoef',
+        'effArenaCoef',
+        'hdArenaCoef',
+        'rdArenaCoef',
+        'hcArenaCoef',
+        'hcngArenaCoef',
+        'edArenaCoef',
+        'nmArenaCoef',
+        'tablePageSize'
+    ];
+
+    ids.forEach(function(id) {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = '';
+        }
+    });
+}
+
+function toggleNavbarCollapsed() {
+    document.body.classList.toggle('nav-collapsed');
+    syncNavbarToggleIcon();
+}
+
+function syncNavbarToggleIcon() {
+    const toggleButton = document.getElementById('toggleNav');
+    if (!toggleButton) {
+        return;
+    }
+    const collapsed = document.body.classList.contains('nav-collapsed');
+    toggleButton.textContent = collapsed ? '>' : '<';
+    const nextActionText = collapsed ? '显示导航' : '隐藏导航';
+    toggleButton.setAttribute('aria-label', nextActionText);
+    toggleButton.setAttribute('title', nextActionText);
+}
+
+function syncNavbarByViewport() {
+    if (window.matchMedia('(max-width: 760px)').matches) {
+        document.body.classList.add('nav-collapsed');
+    } else {
+        document.body.classList.remove('nav-collapsed');
+    }
+    syncNavbarToggleIcon();
+}
+
+function wrapTableForScroll(tableElement) {
+    if (!tableElement || !tableElement.parentElement || tableElement.parentElement.classList.contains('tableWrap')) {
+        return;
+    }
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tableWrap';
+    tableElement.parentElement.insertBefore(wrapper, tableElement);
+    wrapper.appendChild(tableElement);
+}
+
+function sectionizePage(pageElement) {
+    if (!pageElement || pageElement.dataset.sectionized === '1') {
+        return;
+    }
+
+    const nodes = Array.from(pageElement.children);
+    const leadingNodes = [];
+    let currentSection = null;
+    let currentBody = null;
+
+    nodes.forEach(function(node) {
+        if (node.tagName === 'H1') {
+            currentSection = document.createElement('section');
+            currentSection.className = 'pageSection';
+
+            const sectionHeader = document.createElement('div');
+            sectionHeader.className = 'sectionHeader';
+            sectionHeader.appendChild(node);
+
+            currentBody = document.createElement('div');
+            currentBody.className = 'sectionBody';
+
+            currentSection.appendChild(sectionHeader);
+            currentSection.appendChild(currentBody);
+            pageElement.appendChild(currentSection);
+            return;
+        }
+
+        if (currentBody) {
+            currentBody.appendChild(node);
+        } else {
+            leadingNodes.push(node);
+        }
+    });
+
+    if (!pageElement.querySelector('.pageSection')) {
+        const fallbackSection = document.createElement('section');
+        fallbackSection.className = 'pageSection noTitleSection';
+        const fallbackBody = document.createElement('div');
+        fallbackBody.className = 'sectionBody';
+        nodes.forEach(function(node) {
+            fallbackBody.appendChild(node);
+        });
+        fallbackSection.appendChild(fallbackBody);
+        pageElement.appendChild(fallbackSection);
+    } else {
+        const firstSection = pageElement.querySelector('.pageSection');
+        leadingNodes.forEach(function(node) {
+            pageElement.insertBefore(node, firstSection);
+        });
+    }
+
+    pageElement.querySelectorAll('table').forEach(function(tableElement) {
+        wrapTableForScroll(tableElement);
+    });
+
+    pageElement.dataset.sectionized = '1';
+}
+
+function enhancePageContentLayout() {
+    document.querySelectorAll('#content .page').forEach(function(pageElement) {
+        sectionizePage(pageElement);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    const toggleNav = document.getElementById('toggleNav');
+    if (toggleNav) {
+        toggleNav.addEventListener('click', function() {
+            toggleNavbarCollapsed();
+        });
+    }
+
+    enhancePageContentLayout();
+
+    // Set the initial navbar state based on viewport width.
+    syncNavbarByViewport();
+
     // 初始化时显示首页
     showPage('statistic');
     // 获取导航数据的元素 添加点击事件监听器
@@ -250,6 +386,9 @@ window.addEventListener('resize', function() {
     var navbarElement = document.getElementById('navbar');
     // 应用最大高度（使用px单位）
     navbarElement.style.maxHeight = navbarMaxHeight + 'px';
+
+    // Auto collapse/expand navbar when crossing the small-screen breakpoint.
+    syncNavbarByViewport();
 });
 // 初始加载时也应设置最大高度
 window.dispatchEvent(new Event('resize'));
@@ -332,34 +471,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     document.getElementById('github').addEventListener('click', function () {
-        chrome.tabs.create({ url: 'https://github.com/kfbyhyq/Minesweeper-Online-Helper', active: true });
+        chrome.tabs.create({ url: 'https://github.com/NichtsHsu/Minesweeper-Online-Helper', active: true });
     });
 });
 
 /* 收起与展开 */
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('showPeDaily').addEventListener('click', function () {
-        if (document.getElementById('showPedFlag').textContent == 1) {
-            document.getElementById('showPeDaily').textContent = '展开每日财产变化';
-            document.getElementById('peDaily').style.display = 'none';
-            document.getElementById('showPedFlag').textContent = 0;
-        } else {
-            document.getElementById('showPeDaily').textContent = '收起每日财产变化';
-            document.getElementById('peDaily').style.display = 'table';
-            document.getElementById('showPedFlag').textContent = 1;
-        }
-    });
-    document.getElementById('showPrDaily').addEventListener('click', function () {
-        if (document.getElementById('showPrdFlag').textContent == 1) {
-            document.getElementById('showPrDaily').textContent = '展开每日资源变化';
-            document.getElementById('prDaily').style.display = 'none';
-            document.getElementById('showPrdFlag').textContent = 0;
-        } else {
-            document.getElementById('showPrDaily').textContent = '收起每日资源变化';
-            document.getElementById('prDaily').style.display = 'table';
-            document.getElementById('showPrdFlag').textContent = 1;
-        }
-    });
+    // 每日表格已改为默认显示
 });
 
 /* 装备拆解价 */
@@ -663,124 +781,20 @@ function showDisassemblePriceGap(qMin, qMax) {
 
 /* 历史价格 */
 document.addEventListener('DOMContentLoaded', function() {
-    var pdCategory = ['', '宝石', '竞技场币', 
+    var pdCategory = ['宝石', '竞技场币', 
         '速度门票', '速度NG门票', '盲扫门票', '效率门票', '高难度门票', '随机难度门票', '硬核门票', '硬核NG门票', '耐力门票', '噩梦门票', 
         'L1门票', 'L2门票', 'L3门票', 'L4门票', 'L5门票', 'L6门票', 'L7门票', 'L8门票', '装备碎片'];
-    var gemsCategory = ['黄玉', '红宝石', '蓝宝石', '紫水晶', '缟玛瑙', '海蓝宝石', '祖母绿', '石榴石', '碧玉', '钻石'];
-    var acCategory = ['金竞技场币', '铜竞技场币', '银竞技场币', '镍竞技场币', '钢竞技场币', '铁竞技场币', '钯竞技场币', '钛竞技场币', '锌竞技场币', '铂竞技场币'];
-    var atCategory = ['速度', '速度NG', '盲扫', '效率', '高难度', '随机难度', '硬核', '硬核NG', '耐力', '噩梦'];
-    var alCategory = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
-    var partsCategory = ['稀有', '史诗', '传说', '完美T', '完美R', '完美S', '完美A', '完美O', '完美Q', '完美E', '完美G', '完美J', '完美D'];
     const pds = document.getElementById('priceDailySelect');
-    const eDate = document.getElementById('editPriceDate');
-    const eg = document.getElementById('editGems');
-    const eac = document.getElementById('editAcs');
-    const eat = document.getElementById('editAt');
-    const eal = document.getElementById('editAl');
-    const ept = document.getElementById('editParts');
-    /* 初始化界面 */
     for (let i = 0; i < pdCategory.length; i++) {
         let op = document.createElement('option');
-        op.value = i;
+        op.value = i + 1;
         op.textContent = pdCategory[i];
         pds.appendChild(op);
     }
-    for (let i = 0; i < gemsCategory.length; i++) {
-        let opg = document.createElement('option');
-        opg.value = i;
-        opg.textContent = gemsCategory[i];
-        eg.appendChild(opg);
-        let opac = document.createElement('option');
-        opac.value = i;
-        opac.textContent = acCategory[i];
-        eac.appendChild(opac);
-        let opat = document.createElement('option');
-        opat.value = i;
-        opat.textContent = atCategory[i];
-        eat.appendChild(opat);
-    }
-    for (let i = 0; i < alCategory.length; i++) {
-        let opal = document.createElement('option');
-        opal.value = i;
-        opal.textContent = alCategory[i];
-        eal.appendChild(opal);
-    }
-    for (let i = 0; i < partsCategory.length; i++) {
-        let op = document.createElement('option');
-        op.value = i;
-        op.textContent = partsCategory[i];
-        ept.appendChild(op);
-    }
-    const currentDate = new Date();
-    const newDate = currentDate.getUTCFullYear() + '-' + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getUTCDate()).padStart(2, '0');
-    eDate.value = newDate;
-    /* 显示 */
-    // displayPriceDaily();
-    /* 选择条目刷新显示 */
+    pds.value = 1;
+    displayPriceDaily();
     pds.addEventListener('change', function() {
         displayPriceDaily();
-    });
-    eg.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    eac.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    eat.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    eal.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    eDate.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    ept.addEventListener('change', function() {
-        displayPriceDaily();
-    });
-    /* 修改单条数据 */
-    document.getElementById('saveEditPrice').addEventListener('click', function () {
-        const newPrice = document.getElementById('editNewPrice').value;
-        if (newPrice > 0) {
-            const pdc = document.getElementById('priceDailySelect').value;
-            const date = document.getElementById('editPriceDate').value;
-            const egv = document.getElementById('editGems').value;
-            const eacv = document.getElementById('editAcs').value;
-            const eatv = document.getElementById('editAt').value;
-            const ealv = document.getElementById('editAl').value;
-            chrome.storage.local.get(['gemsPriceMap', 'ticketPriceMap'], function (result) {
-                const gpMap = result.gemsPriceMap || {};
-                const tpMap = result.ticketPriceMap || {};
-                try {
-                    if (pdc == 1) {
-                        const dateKey = date.replace(/-/g, '');
-                        gpMap[dateKey][1][egv] = newPrice;
-                        chrome.storage.local.set({ gemsPriceMap: gpMap });
-                        displayPriceDaily();
-                    } else if (pdc == 2) {
-                        const dateKey = date.replace(/-/g, '');
-                        gpMap[dateKey][3][eacv] = newPrice;
-                        chrome.storage.local.set({ gemsPriceMap: gpMap });
-                        displayPriceDaily();
-                    } else if (pdc < 13) {
-                        const dateKey = date.replace(/-/g, '');
-                        tpMap[dateKey][pdc - 2][+ealv + 1] = newPrice;
-                        chrome.storage.local.set({ ticketPriceMap: tpMap });
-                        displayPriceDaily();
-                    } else if (pdc < 21) {
-                        const dateKey = date.replace(/-/g, '');
-                        tpMap[dateKey][+eatv + 1][pdc - 12] = newPrice;
-                        chrome.storage.local.set({ ticketPriceMap: tpMap });
-                        displayPriceDaily();
-                    }
-                } catch (e) {
-                    console.log(e);
-                    window.alert('修改失败');
-                }
-            });
-        } else {
-            window.alert('请输入价格');
-        }
     });
 });
 
@@ -1215,6 +1229,12 @@ function generateDateCell(firstDate, startDate, endDate, data, level, type) { //
         }
     }
 }
+function readThemeColor(varName, fallbackColor) {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const color = rootStyle.getPropertyValue(`--${varName}`).trim();
+    return color || fallbackColor;
+}
+
 function getColorForDateCell(cell, dataMin, dataMax, level, type) { // 颜色选择
     // var desc = 1;
     // if (type == 1) { // 只有时间是升序，最小数据是最优数据
@@ -1223,148 +1243,148 @@ function getColorForDateCell(cell, dataMin, dataMax, level, type) { // 颜色选
     const pbData = cell.getAttribute('cellValue');
     if (type == 0) { // 局数绿色
         if (pbData <= dataMin + (dataMax - dataMin) * 0.1) {
-            return '#c6e7c0';
+            return readThemeColor('dailyPBCount1', '#c6e7c0');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.3) {
-            return '#9be9a8';
+            return readThemeColor('dailyPBCount2', '#9be9a8');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.5) {
-            return '#40c463';
+            return readThemeColor('dailyPBCount3', '#40c463');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.7) {
-            return '#30a14e';
+            return readThemeColor('dailyPBCount4', '#30a14e');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.9) {
-            return '#216e39';
+            return readThemeColor('dailyPBCount5', '#216e39');
         } else {
-            return '#144d27';
+            return readThemeColor('dailyPBCount6', '#144d27');
         }
     } else if (type == 1) { // 时间粉色
         if (level == 3) {
             if (pbData >= 100) {
-                return '#ffd6e7';
+                return readThemeColor('dailyPBTime1', '#ffd6e7');
             } else if (pbData >= 80) {
-                return '#ffb3d9';
+                return readThemeColor('dailyPBTime2', '#ffb3d9');
             } else if (pbData >= 70) {
-                return '#ff8fbf';
+                return readThemeColor('dailyPBTime3', '#ff8fbf');
             } else if (pbData >= 60) {
-                return '#f368a0';
+                return readThemeColor('dailyPBTime4', '#f368a0');
             } else if (pbData >= 50) {
-                return '#e64980';
+                return readThemeColor('dailyPBTime5', '#e64980');
             } else {
-                return '#c2255c';
+                return readThemeColor('dailyPBTime6', '#c2255c');
             }
         } else if (level == 2) {
             if (pbData >= 30) {
-                return '#ffd6e7';
+                return readThemeColor('dailyPBTime1', '#ffd6e7');
             } else if (pbData >= 24) {
-                return '#ffb3d9';
+                return readThemeColor('dailyPBTime2', '#ffb3d9');
             } else if (pbData >= 20) {
-                return '#ff8fbf';
+                return readThemeColor('dailyPBTime3', '#ff8fbf');
             } else if (pbData >= 16) {
-                return '#f368a0';
+                return readThemeColor('dailyPBTime4', '#f368a0');
             } else if (pbData >= 12) {
-                return '#e64980';
+                return readThemeColor('dailyPBTime5', '#e64980');
             } else {
-                return '#c2255c';
+                return readThemeColor('dailyPBTime6', '#c2255c');
             }
         } else if (level == 1) {
             if (pbData >= 5) {
-                return '#ffd6e7';
+                return readThemeColor('dailyPBTime1', '#ffd6e7');
             } else if (pbData >= 3) {
-                return '#ffb3d9';
+                return readThemeColor('dailyPBTime2', '#ffb3d9');
             } else if (pbData >= 2) {
-                return '#ff8fbf';
+                return readThemeColor('dailyPBTime3', '#ff8fbf');
             } else if (pbData >= 1) {
-                return '#f368a0';
+                return readThemeColor('dailyPBTime4', '#f368a0');
             } else if (pbData >= 0.7) {
-                return '#e64980';
+                return readThemeColor('dailyPBTime5', '#e64980');
             } else {
-                return '#c2255c';
+                return readThemeColor('dailyPBTime6', '#c2255c');
             }
         }
     } else if (type == 3) { // bvs红色
         if (pbData <= dataMin + (dataMax - dataMin) * 0.4) {
-            return '#ffd4d4';
+            return readThemeColor('dailyPBBvs1', '#ffd4d4');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.6) {
-            return '#ffaaaa';
+            return readThemeColor('dailyPBBvs2', '#ffaaaa');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.8) {
-            return '#ff8787';
+            return readThemeColor('dailyPBBvs3', '#ff8787');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.9) {
-            return '#fa5252';
+            return readThemeColor('dailyPBBvs4', '#fa5252');
         } else if (pbData <= dataMin + (dataMax - dataMin) * 0.95) {
-            return '#c92a2a';
+            return readThemeColor('dailyPBBvs5', '#c92a2a');
         } else {
-            return '#8a1c1c';
+            return readThemeColor('dailyPBBvs6', '#8a1c1c');
         }
     } else if (type == 5) { // 效率橙色
         if (level == 3) {
             if (pbData <= 110) {
-                return '#ffe0b5';
+                return readThemeColor('dailyPBEff1', '#ffe0b5');
             } else if (pbData <= 120) {
-                return '#ffc978';
+                return readThemeColor('dailyPBEff2', '#ffc978');
             } else if (pbData <= 130) {
-                return '#ffa94d';
+                return readThemeColor('dailyPBEff3', '#ffa94d');
             } else if (pbData <= 138) {
-                return '#ff922b';
+                return readThemeColor('dailyPBEff4', '#ff922b');
             } else if (pbData <= 145) {
-                return '#e67700';
+                return readThemeColor('dailyPBEff5', '#e67700');
             } else {
-                return '#b35c00';
+                return readThemeColor('dailyPBEff6', '#b35c00');
             }
         } else {
             if (pbData <= dataMin + (dataMax - dataMin) * 0.2) {
-                return '#ffe0b5';
+                return readThemeColor('dailyPBEff1', '#ffe0b5');
             } else if (pbData <= dataMin + (dataMax - dataMin) * 0.4) {
-                return '#ffc978';
+                return readThemeColor('dailyPBEff2', '#ffc978');
             } else if (pbData <= dataMin + (dataMax - dataMin) * 0.6) {
-                return '#ffa94d';
+                return readThemeColor('dailyPBEff3', '#ffa94d');
             } else if (pbData <= dataMin + (dataMax - dataMin) * 0.8) {
-                return '#ff922b';
+                return readThemeColor('dailyPBEff4', '#ff922b');
             } else if (pbData <= dataMin + (dataMax - dataMin) * 0.9) {
-                return '#e67700';
+                return readThemeColor('dailyPBEff5', '#e67700');
             } else {
-                return '#b35c00';
+                return readThemeColor('dailyPBEff6', '#b35c00');
             }
         }
     } else if (type == 7) { // 盲扫蓝色
         if (level == 3) {
             if (pbData >= 130) {
-                return '#d0e3ff';
+                return readThemeColor('dailyPBBlind1', '#d0e3ff');
             } else if (pbData >= 100) {
-                return '#a5d1ff';
+                return readThemeColor('dailyPBBlind2', '#a5d1ff');
             } else if (pbData >= 80) {
-                return '#7db8ff';
+                return readThemeColor('dailyPBBlind3', '#7db8ff');
             } else if (pbData >= 70) {
-                return '#3d8bfd';
+                return readThemeColor('dailyPBBlind4', '#3d8bfd');
             } else if (pbData >= 60) {
-                return '#0a58ca';
+                return readThemeColor('dailyPBBlind5', '#0a58ca');
             } else {
-                return '#083d91';
+                return readThemeColor('dailyPBBlind6', '#083d91');
             }
         } else if (level == 2) {
             if (pbData >= 40) {
-                return '#d0e3ff';
+                return readThemeColor('dailyPBBlind1', '#d0e3ff');
             } else if (pbData >= 30) {
-                return '#a5d1ff';
+                return readThemeColor('dailyPBBlind2', '#a5d1ff');
             } else if (pbData >= 24) {
-                return '#7db8ff';
+                return readThemeColor('dailyPBBlind3', '#7db8ff');
             } else if (pbData >= 18) {
-                return '#3d8bfd';
+                return readThemeColor('dailyPBBlind4', '#3d8bfd');
             } else if (pbData >= 14) {
-                return '#0a58ca';
+                return readThemeColor('dailyPBBlind5', '#0a58ca');
             } else {
-                return '#083d91';
+                return readThemeColor('dailyPBBlind6', '#083d91');
             }
         } else if (level == 1) {
             if (pbData >= 5) {
-                return '#d0e3ff';
+                return readThemeColor('dailyPBBlind1', '#d0e3ff');
             } else if (pbData >= 3) {
-                return '#a5d1ff';
+                return readThemeColor('dailyPBBlind2', '#a5d1ff');
             } else if (pbData >= 2) {
-                return '#7db8ff';
+                return readThemeColor('dailyPBBlind3', '#7db8ff');
             } else if (pbData >= 1) {
-                return '#3d8bfd';
+                return readThemeColor('dailyPBBlind4', '#3d8bfd');
             } else if (pbData >= 0.7) {
-                return '#0a58ca';
+                return readThemeColor('dailyPBBlind5', '#0a58ca');
             } else {
-                return '#083d91';
+                return readThemeColor('dailyPBBlind6', '#083d91');
             }
         }
     }
@@ -1690,10 +1710,209 @@ const arenaExpectTime = [
 const arenaPreCoef = [4.5, 4.5, 5.1924, 9, 4.32, 4.3028, 5.1924, 6, 4.5, 4.5]; // 竞技场用时预分配系数，用于配齐默认系数为1
 const tm = 10;
 const lm = 8;
+const DEFAULT_THEME_NAME = '默认';
+const DEFAULT_TABLE_PAGE_SIZE = 10;
+const DEFAULT_CONFIGURABLE_COEF = [2.5, 56.6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 56.6];
+const DEFAULT_AUTO_UPDATE = [[false, 0, 0, 0], [false, 0, 0, 0], [false, 0, 0, 0], [false]];
+
+function cloneDefaultAutoUpdate() {
+    return DEFAULT_AUTO_UPDATE.map(function(row) {
+        return row.slice();
+    });
+}
+
+function applySettingInputsFromConfig(configurableCoef, tablePageSize) {
+    document.getElementById('act2ep').placeholder = configurableCoef[0];
+    document.getElementById('ep2mc').placeholder = configurableCoef[1];
+    document.getElementById('spArenaCoef').placeholder = configurableCoef[2];
+    document.getElementById('spngArenaCoef').placeholder = configurableCoef[3];
+    document.getElementById('nfArenaCoef').placeholder = configurableCoef[4];
+    document.getElementById('effArenaCoef').placeholder = configurableCoef[5];
+    document.getElementById('hdArenaCoef').placeholder = configurableCoef[6];
+    document.getElementById('rdArenaCoef').placeholder = configurableCoef[7];
+    document.getElementById('hcArenaCoef').placeholder = configurableCoef[8];
+    document.getElementById('hcngArenaCoef').placeholder = configurableCoef[9];
+    document.getElementById('edArenaCoef').placeholder = configurableCoef[10];
+    document.getElementById('nmArenaCoef').placeholder = configurableCoef[11];
+    document.getElementById('hp2mc').placeholder = configurableCoef[12];
+
+    const finalPageSize = Number(tablePageSize);
+    document.getElementById('tablePageSize').placeholder =
+        Number.isFinite(finalPageSize) && finalPageSize > 0 ? String(Math.floor(finalPageSize)) : String(DEFAULT_TABLE_PAGE_SIZE);
+}
+
+function applyArenaCoefPreview(configurableCoef) {
+    const acsTable = document.getElementById('arenaCoefSettingTable');
+    for (let t = 0; t < tm; t++) {
+        for (let l = 0; l < lm; l++) {
+            var time = arenaExpectTime[t][l] * configurableCoef[t + 2] * arenaPreCoef[t];
+            var h = time / 3600 | 0;
+            var m = (time - h * 3600) / 60 | 0;
+            var s = (time - h * 3600 - m * 60) | 0;
+            if (h > 100) {
+                acsTable.rows[t + 1].cells[l + 2].textContent = String(h).padStart(3, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            } else {
+                acsTable.rows[t + 1].cells[l + 2].textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            }
+        }
+    }
+}
+
+function applyAutoUpdateInputs(autoUpdate) {
+    document.getElementById('toggleSwitch1').checked = !!autoUpdate[0][0];
+    document.getElementById('hourSelect1').value = autoUpdate[0][1];
+    document.getElementById('minuteSelect1').value = autoUpdate[0][2];
+    document.getElementById('secondSelect1').value = autoUpdate[0][3];
+    document.getElementById('toggleSwitch2').checked = !!autoUpdate[1][0];
+    document.getElementById('hourSelect2').value = autoUpdate[1][1];
+    document.getElementById('minuteSelect2').value = autoUpdate[1][2];
+    document.getElementById('secondSelect2').value = autoUpdate[1][3];
+    document.getElementById('toggleSwitch3').checked = !!autoUpdate[2][0];
+    document.getElementById('hourSelect3').value = autoUpdate[2][1];
+    document.getElementById('minuteSelect3').value = autoUpdate[2][2];
+    document.getElementById('secondSelect3').value = autoUpdate[2][3];
+    document.getElementById('toggleSwitchAt').checked = !!autoUpdate[3][0];
+}
+
+function setThemeOptions(themeMap, selectedTheme) {
+    const themeSelect = document.getElementById('themeSelect');
+    if (!themeSelect) {
+        return;
+    }
+    themeSelect.innerHTML = '';
+    const theme0 = new Option(DEFAULT_THEME_NAME, DEFAULT_THEME_NAME);
+    themeSelect.add(theme0);
+    for (let themeName in themeMap) {
+        if (themeName !== DEFAULT_THEME_NAME) {
+            const themeOption = new Option(themeName, themeName);
+            themeSelect.add(themeOption);
+        }
+    }
+    themeSelect.value = selectedTheme;
+}
+
+function normalizeThemeEntry(themeEntry, fallbackEntry) {
+    const normalizedTheme = {};
+    const sourceTheme = themeEntry && typeof themeEntry === 'object' ? themeEntry : {};
+    const fallbackTheme = fallbackEntry && typeof fallbackEntry === 'object' ? fallbackEntry : {};
+    for (const [key, value] of Object.entries(fallbackTheme)) {
+        normalizedTheme[key] = Array.isArray(value) ? value.slice() : value;
+    }
+    for (const [key, value] of Object.entries(sourceTheme)) {
+        normalizedTheme[key] = Array.isArray(value) ? value.slice() : value;
+    }
+    return normalizedTheme;
+}
+
+function getResolvedThemeMap(storedThemeMap) {
+    const resolvedThemeMap = {};
+    const sourceThemeMap = storedThemeMap && typeof storedThemeMap === 'object' ? storedThemeMap : {};
+    for (const [themeName, themeEntry] of Object.entries(defaultThemes)) {
+        resolvedThemeMap[themeName] = normalizeThemeEntry(themeEntry, null);
+    }
+    for (const [themeName, themeEntry] of Object.entries(sourceThemeMap)) {
+        if (!resolvedThemeMap[themeName]) {
+            resolvedThemeMap[themeName] = normalizeThemeEntry(themeEntry, null);
+        }
+    }
+    return resolvedThemeMap;
+}
+
+function applyTheme(themeName, themeMap) {
+    const resolvedThemeMap = getResolvedThemeMap(themeMap);
+    const targetThemeName = resolvedThemeMap[themeName] ? themeName : DEFAULT_THEME_NAME;
+    const root = document.documentElement;
+    root.removeAttribute('style');
+    for (const themeKey of Object.keys(resolvedThemeMap)) {
+        root.classList.remove(themeKey);
+    }
+    root.classList.add(targetThemeName);
+    const themeEntry = resolvedThemeMap[targetThemeName] || {};
+    const appliedThemeVars = {};
+    for (const [key, value] of Object.entries(themeEntry)) {
+        if (key !== 'themeName' && key !== 'introduce' && Array.isArray(value)) {
+            root.style.setProperty(`--${key}`, value[0]);
+            appliedThemeVars[key] = value[0];
+        }
+    }
+
+    // Persist the exact applied variables so popup can follow the same theme.
+    chrome.storage.local.set({
+        activeThemeName: targetThemeName,
+        activeThemeVars: appliedThemeVars
+    });
+}
+
+function refreshThemeDependentViews() {
+    const safeCall = function(fn) {
+        if (typeof fn !== 'function') {
+            return;
+        }
+        try {
+            fn();
+        } catch (e) {
+            console.error('Theme refresh renderer failed:', e);
+        }
+    };
+
+    safeCall(displayTables);
+    safeCall(displayBVPB);
+    safeCall(displayPriceDaily);
+
+    // Re-render after CSS variables settle so dailyPB inline colors update immediately.
+    if (typeof displayDailyPB === 'function') {
+        requestAnimationFrame(function() {
+            safeCall(displayDailyPB);
+        });
+    }
+}
+
+function resetAllSettingsToDefault() {
+    const defaultAutoUpdate = cloneDefaultAutoUpdate();
+    const defaultConfigurableCoef = DEFAULT_CONFIGURABLE_COEF.slice();
+    const defaultThemeMap = defaultThemes;
+
+    chrome.storage.local.set({
+        themeMap: defaultThemeMap,
+        theme: DEFAULT_THEME_NAME,
+        pId: '',
+        configurableCoef: defaultConfigurableCoef,
+        tablePageSize: DEFAULT_TABLE_PAGE_SIZE,
+        autoUpdate: defaultAutoUpdate
+    }, function() {
+        document.getElementById('pIdNow').innerText = '';
+        document.getElementById('personalId').value = '';
+        document.getElementById('personalId').placeholder = '请设置账号';
+
+        applySettingInputsFromConfig(defaultConfigurableCoef, DEFAULT_TABLE_PAGE_SIZE);
+        applyArenaCoefPreview(defaultConfigurableCoef);
+        applyAutoUpdateInputs(defaultAutoUpdate);
+        clearSettingValueInputs();
+
+        setThemeOptions(defaultThemeMap, DEFAULT_THEME_NAME);
+        applyTheme(DEFAULT_THEME_NAME);
+        refreshThemeDependentViews();
+
+        chrome.alarms.clear('updateData');
+        chrome.alarms.clear('updateEaTask');
+        chrome.alarms.clear('updateFqTask');
+
+        if (typeof window.setTablePageSizeSetting === 'function') {
+            window.setTablePageSizeSetting(DEFAULT_TABLE_PAGE_SIZE);
+        }
+        if (typeof window.refreshPageTablePagination === 'function') {
+            window.refreshPageTablePagination('setting');
+        }
+
+        document.getElementById('saveSucc').innerText = '已重置为默认设置！';
+        document.getElementById('saveSucc').style.display = 'block';
+    });
+}
+
 /* 设置页 */
 document.addEventListener('DOMContentLoaded', function() {
     /* 读当前设置 */
-    chrome.storage.local.get(['pId', 'configurableCoef'], function (result) {
+    chrome.storage.local.get(['pId', 'configurableCoef', 'tablePageSize'], function (result) {
         const pId = result.pId;
         if (pId) {
             document.getElementById('pIdNow').innerText = pId;
@@ -1701,69 +1920,19 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.getElementById('personalId').placeholder = '请设置账号';
         }
-        const configurableCoef = result.configurableCoef;
-        if (!configurableCoef) {
-            configurableCoef = [2.5, 56.6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 56.6];
-        }
-        // if (configurableCoef) {
-            document.getElementById('act2ep').placeholder = configurableCoef[0];
-            document.getElementById('ep2mc').placeholder = configurableCoef[1];
-            document.getElementById('spArenaCoef').placeholder = configurableCoef[2];
-            document.getElementById('spngArenaCoef').placeholder = configurableCoef[3];
-            document.getElementById('nfArenaCoef').placeholder = configurableCoef[4];
-            document.getElementById('effArenaCoef').placeholder = configurableCoef[5];
-            document.getElementById('hdArenaCoef').placeholder = configurableCoef[6];
-            document.getElementById('rdArenaCoef').placeholder = configurableCoef[7];
-            document.getElementById('hcArenaCoef').placeholder = configurableCoef[8];
-            document.getElementById('hcngArenaCoef').placeholder = configurableCoef[9];
-            document.getElementById('edArenaCoef').placeholder = configurableCoef[10];
-            document.getElementById('nmArenaCoef').placeholder = configurableCoef[11];
-            document.getElementById('hp2mc').placeholder = configurableCoef[12];
-        // } else {
-        //     document.getElementById('act2ep').placeholder = 2.5;
-        //     document.getElementById('ep2mc').placeholder = 56.6;
-        //     document.getElementById('spArenaCoef').placeholder = 1;
-        //     document.getElementById('spngArenaCoef').placeholder = 1;
-        //     document.getElementById('nfArenaCoef').placeholder = 1;
-        //     document.getElementById('effArenaCoef').placeholder = 1;
-        //     document.getElementById('hdArenaCoef').placeholder = 1;
-        //     document.getElementById('rdArenaCoef').placeholder = 1;
-        //     document.getElementById('hcArenaCoef').placeholder = 1;
-        //     document.getElementById('hcngArenaCoef').placeholder = 1;
-        //     document.getElementById('edArenaCoef').placeholder = 1;
-        //     document.getElementById('nmArenaCoef').placeholder = 1;
-        //     document.getElementById('hp2mc').placeholder = 56.6;
-        // }
-        const acsTable = document.getElementById('arenaCoefSettingTable');
-        for (let t = 0; t < tm; t++) {
-            for (let l = 0; l < lm; l++) {
-                var time = arenaExpectTime[t][l] * configurableCoef[t + 2] * arenaPreCoef[t];
-                var h = time / 3600 | 0;
-                var m = (time - h * 3600) / 60 | 0;
-                var s = (time - h * 3600 - m * 60) | 0;
-                if (h > 100) {
-                    acsTable.rows[t + 1].cells[l + 2].textContent = String(h).padStart(3, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-                } else {
-                    acsTable.rows[t + 1].cells[l + 2].textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-                }
-            }
-        }
+        const rawConfigurableCoef = Array.isArray(result.configurableCoef) ? result.configurableCoef : [];
+        const configurableCoef = DEFAULT_CONFIGURABLE_COEF.map(function(defaultValue, index) {
+            const value = rawConfigurableCoef[index];
+            return value === undefined || value === null || value === '' ? defaultValue : value;
+        });
+        const tablePageSize = Number(result.tablePageSize);
+        applySettingInputsFromConfig(configurableCoef, tablePageSize);
+        clearSettingValueInputs();
+        applyArenaCoefPreview(configurableCoef);
     });
     chrome.storage.local.get('autoUpdate', function (result) {
-        const autoUpdate = result.autoUpdate;
-        document.getElementById('toggleSwitch1').checked = autoUpdate[0][0];
-        document.getElementById('hourSelect1').value = autoUpdate[0][1];
-        document.getElementById('minuteSelect1').value = autoUpdate[0][2];
-        document.getElementById('secondSelect1').value = autoUpdate[0][3];
-        document.getElementById('toggleSwitch2').checked = autoUpdate[1][0];
-        document.getElementById('hourSelect2').value = autoUpdate[1][1];
-        document.getElementById('minuteSelect2').value = autoUpdate[1][2];
-        document.getElementById('secondSelect2').value = autoUpdate[1][3];
-        document.getElementById('toggleSwitch3').checked = autoUpdate[2][0];
-        document.getElementById('hourSelect3').value = autoUpdate[2][1];
-        document.getElementById('minuteSelect3').value = autoUpdate[2][2];
-        document.getElementById('secondSelect3').value = autoUpdate[2][3];
-        document.getElementById('toggleSwitchAt').checked = autoUpdate[3][0];
+        const autoUpdate = Array.isArray(result.autoUpdate) ? result.autoUpdate : cloneDefaultAutoUpdate();
+        applyAutoUpdateInputs(autoUpdate);
     });
     /* 自动刷新下拉菜单 */
     const h1 = document.getElementById('hourSelect1');
@@ -1870,71 +2039,29 @@ document.addEventListener('DOMContentLoaded', function() {
         /* 可配置参数 */
         {
             var configurableCoef = [];
-            if (document.getElementById('act2ep').value) {
-                configurableCoef[0] = document.getElementById('act2ep').value;
-            } else {
-                configurableCoef[0] = document.getElementById('act2ep').placeholder;
-            }
-            if (document.getElementById('ep2mc').value) {
-                configurableCoef[1] = document.getElementById('ep2mc').value;
-            } else {
-                configurableCoef[1] = document.getElementById('ep2mc').placeholder;
-            }
-            if (document.getElementById('hp2mc').value) {
-                configurableCoef[12] = document.getElementById('hp2mc').value;
-            } else {
-                configurableCoef[12] = document.getElementById('hp2mc').placeholder;
-            }
-            if (document.getElementById('spArenaCoef').value) {
-                configurableCoef[2] = document.getElementById('spArenaCoef').value;
-            } else {
-                configurableCoef[2] = document.getElementById('spArenaCoef').placeholder;
-            }
-            if (document.getElementById('spngArenaCoef').value) {
-                configurableCoef[3] = document.getElementById('spngArenaCoef').value;
-            } else {
-                configurableCoef[3] = document.getElementById('spngArenaCoef').placeholder;
-            }
-            if (document.getElementById('nfArenaCoef').value) {
-                configurableCoef[4] = document.getElementById('nfArenaCoef').value;
-            } else {
-                configurableCoef[4] = document.getElementById('nfArenaCoef').placeholder;
-            }
-            if (document.getElementById('effArenaCoef').value) {
-                configurableCoef[5] = document.getElementById('effArenaCoef').value;
-            } else {
-                configurableCoef[5] = document.getElementById('effArenaCoef').placeholder;
-            }
-            if (document.getElementById('hdArenaCoef').value) {
-                configurableCoef[6] = document.getElementById('hdArenaCoef').value;
-            } else {
-                configurableCoef[6] = document.getElementById('hdArenaCoef').placeholder;
-            }
-            if (document.getElementById('rdArenaCoef').value) {
-                configurableCoef[7] = document.getElementById('rdArenaCoef').value;
-            } else {
-                configurableCoef[7] = document.getElementById('rdArenaCoef').placeholder;
-            }
-            if (document.getElementById('hcArenaCoef').value) {
-                configurableCoef[8] = document.getElementById('hcArenaCoef').value;
-            } else {
-                configurableCoef[8] = document.getElementById('hcArenaCoef').placeholder;
-            }
-            if (document.getElementById('hcngArenaCoef').value) {
-                configurableCoef[9] = document.getElementById('hcngArenaCoef').value;
-            } else {
-                configurableCoef[9] = document.getElementById('hcngArenaCoef').placeholder;
-            }
-            if (document.getElementById('edArenaCoef').value) {
-                configurableCoef[10] = document.getElementById('edArenaCoef').value;
-            } else {
-                configurableCoef[10] = document.getElementById('edArenaCoef').placeholder;
-            }
-            if (document.getElementById('nmArenaCoef').value) {
-                configurableCoef[11] = document.getElementById('nmArenaCoef').value;
-            } else {
-                configurableCoef[11] = document.getElementById('nmArenaCoef').placeholder;
-            }
+            const readSettingInput = function (id, fallbackValue) {
+                const input = document.getElementById(id);
+                const rawValue = input.value.trim();
+                const nextValue = rawValue !== '' ? rawValue : (input.placeholder || String(fallbackValue));
+                input.placeholder = String(nextValue);
+                input.value = '';
+                return nextValue;
+            };
+
+            configurableCoef[0] = readSettingInput('act2ep', 2.5);
+            configurableCoef[1] = readSettingInput('ep2mc', 56.6);
+            configurableCoef[2] = readSettingInput('spArenaCoef', 1);
+            configurableCoef[3] = readSettingInput('spngArenaCoef', 1);
+            configurableCoef[4] = readSettingInput('nfArenaCoef', 1);
+            configurableCoef[5] = readSettingInput('effArenaCoef', 1);
+            configurableCoef[6] = readSettingInput('hdArenaCoef', 1);
+            configurableCoef[7] = readSettingInput('rdArenaCoef', 1);
+            configurableCoef[8] = readSettingInput('hcArenaCoef', 1);
+            configurableCoef[9] = readSettingInput('hcngArenaCoef', 1);
+            configurableCoef[10] = readSettingInput('edArenaCoef', 1);
+            configurableCoef[11] = readSettingInput('nmArenaCoef', 1);
+            configurableCoef[12] = readSettingInput('hp2mc', 56.6);
+
             chrome.storage.local.set({ configurableCoef: configurableCoef });
             const acsTable = document.getElementById('arenaCoefSettingTable');
             for (let t = 0; t < tm; t++) {
@@ -1950,7 +2077,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
+
+            const tablePageSizeInput = document.getElementById('tablePageSize');
+            const fallbackPageSize = Number(tablePageSizeInput.placeholder) || 10;
+            const rawTablePageSize = tablePageSizeInput.value || fallbackPageSize;
+            let tablePageSize = Number(rawTablePageSize);
+            if (!Number.isFinite(tablePageSize) || tablePageSize < 1) {
+                tablePageSize = 10;
+            }
+            tablePageSize = Math.min(200, Math.floor(tablePageSize));
+            tablePageSizeInput.placeholder = String(tablePageSize);
+            tablePageSizeInput.value = '';
+            chrome.storage.local.set({ tablePageSize: tablePageSize });
+            if (typeof window.setTablePageSizeSetting === 'function') {
+                window.setTablePageSizeSetting(tablePageSize);
+            }
         }
+    });
+    /* 重置设置 */
+    document.getElementById('resetSetting').addEventListener('click', function () {
+        const confirmReset = window.confirm('将恢复网站设置、账号设置、参数设置、表格显示、自动刷新与竞技场用时系数到默认值，确认继续吗？');
+        if (!confirmReset) {
+            return;
+        }
+        resetAllSettingsToDefault();
     });
     /* 备份数据 */
     document.getElementById('backupButton').addEventListener('click', function () {
@@ -2339,26 +2489,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 const themeExample = {
     "themeName": "默认",
     "introduce": "themeName后的变量为显示在设置中的主题名，重名的可以直接覆盖；每一行[]中第一个元素为颜色，第二个元素为说明，根据说明改颜色，不要动变量名和说明",
-    "headBgc": ["#70B2E2", "标题 背景色"],
     "headFc": ["#ffffff", "标题 字色"],
-    "navBgc": ["#ADDFBA", "导航栏背景色"],
-    "navABgc": ["#ADDFBA", "导航栏项目 背景色"],
-    "navAFc": ["#333333", "导航栏项目 字色"],
-    "navHvBgc": ["#D6EBB3", "导航栏项目悬停 背景色"],
-    "navHvFc": ["#333333", "导航栏项目 悬停 字色"],
-    "navAcBgc": ["#7AD295", "导航栏项目 激活 背景色"],
     "navAcFc": ["#ffffff", "导航栏项目 激活 字色"],
-    "navEvBgc": ["#bbc3f1", "导航栏活动项 背景色"],
-    "navEvFc": ["#333333", "导航栏活动项 字色"],
-    "navEvHvBgc": ["#bbd9f1", "导航栏活动项 悬停 背景色"],
-    "navEvHvFc": ["#333333", "导航栏活动项 悬停 字色"],
-    "navEvAcBgc": ["#92a1f7", "导航栏活动项 激活 背景色"],
     "navEvAcFc": ["#ffffff", "导航栏活动项 激活 字色"],
-    "navUpBgc": ["#fdda4f", "导航栏刷新/链接项 背景色"],
-    "navUpFc": ["#333333", "导航栏刷新/链接项 字色"],
-    "navUpHvBgc": ["#fdda4f", "导航栏刷新/链接项 悬停 背景色"],
-    "navUpHvFc": ["#333333", "导航栏刷新/链接项 悬停 字色"],
-    "contentBgc": ["#ffffff", "内容区域 背景色"],
     "contentFc": ["#000000", "内容区域 字色"],
     "tableFc": ["#000000", "表格 字色"],
     "tableOddRowBgc": ["#E4EEC9", "表格 奇数行 背景色"],
@@ -2408,7 +2541,37 @@ const themeExample = {
     "bvpkLose": ["#fbaa78", "bvpk失败 背景色"],
     "bvpkDraw": ["#d4ebf9", "bvpk平局 背景色"],
     "bvpkSolo": ["#a9efb4", "bvpk独占 背景色"],
-    "dailyPBLabelFc": ["#000000", "每日pb标签字色"]
+    "dailyPBLabelFc": ["#000000", "每日pb标签字色"],
+    "dailyPBCount1": ["#c6e7c0", "每日PB 局数色阶1"],
+    "dailyPBCount2": ["#9be9a8", "每日PB 局数色阶2"],
+    "dailyPBCount3": ["#40c463", "每日PB 局数色阶3"],
+    "dailyPBCount4": ["#30a14e", "每日PB 局数色阶4"],
+    "dailyPBCount5": ["#216e39", "每日PB 局数色阶5"],
+    "dailyPBCount6": ["#144d27", "每日PB 局数色阶6"],
+    "dailyPBTime1": ["#ffd6e7", "每日PB 时间色阶1"],
+    "dailyPBTime2": ["#ffb3d9", "每日PB 时间色阶2"],
+    "dailyPBTime3": ["#ff8fbf", "每日PB 时间色阶3"],
+    "dailyPBTime4": ["#f368a0", "每日PB 时间色阶4"],
+    "dailyPBTime5": ["#e64980", "每日PB 时间色阶5"],
+    "dailyPBTime6": ["#c2255c", "每日PB 时间色阶6"],
+    "dailyPBBvs1": ["#ffd4d4", "每日PB 3BV/s色阶1"],
+    "dailyPBBvs2": ["#ffaaaa", "每日PB 3BV/s色阶2"],
+    "dailyPBBvs3": ["#ff8787", "每日PB 3BV/s色阶3"],
+    "dailyPBBvs4": ["#fa5252", "每日PB 3BV/s色阶4"],
+    "dailyPBBvs5": ["#c92a2a", "每日PB 3BV/s色阶5"],
+    "dailyPBBvs6": ["#8a1c1c", "每日PB 3BV/s色阶6"],
+    "dailyPBEff1": ["#ffe0b5", "每日PB 效率色阶1"],
+    "dailyPBEff2": ["#ffc978", "每日PB 效率色阶2"],
+    "dailyPBEff3": ["#ffa94d", "每日PB 效率色阶3"],
+    "dailyPBEff4": ["#ff922b", "每日PB 效率色阶4"],
+    "dailyPBEff5": ["#e67700", "每日PB 效率色阶5"],
+    "dailyPBEff6": ["#b35c00", "每日PB 效率色阶6"],
+    "dailyPBBlind1": ["#d0e3ff", "每日PB 盲扫色阶1"],
+    "dailyPBBlind2": ["#a5d1ff", "每日PB 盲扫色阶2"],
+    "dailyPBBlind3": ["#7db8ff", "每日PB 盲扫色阶3"],
+    "dailyPBBlind4": ["#3d8bfd", "每日PB 盲扫色阶4"],
+    "dailyPBBlind5": ["#0a58ca", "每日PB 盲扫色阶5"],
+    "dailyPBBlind6": ["#083d91", "每日PB 盲扫色阶6"]
 };
 /* 预设主题 */
 const defaultThemes = {
@@ -2416,26 +2579,73 @@ const defaultThemes = {
     "深色": {
         "themeName": "深色",
         "introduce": "",
-        "headBgc": ["#24292e", "标题 背景色"],
+        "ui-bg": ["#0f141a", "页面主背景"],
+        "ui-panel": ["#161d26", "内容卡片背景"],
+        "ui-border": ["#2a3644", "全局边框色"],
+        "ui-shadow": ["0 14px 36px rgba(0, 0, 0, 0.34)", "全局阴影"],
+        "ui-text-main": ["#e6edf3", "主文字色"],
+        "ui-text-muted": ["#93a6b8", "次级文字色"],
+        "scrollbar-track": ["#111821", "滚动条轨道"],
+        "scrollbar-thumb": ["#4c677f", "滚动条滑块"],
+        "scrollbar-thumb-hover": ["#6286a4", "滚动条滑块悬停"],
+        "scrollbar-thumb-active": ["#78a0c0", "滚动条滑块按下"],
+        "bodyBgGrad1": ["#16324b", "页面背景渐变一"],
+        "bodyBgGrad2": ["#10352f", "页面背景渐变二"],
+        "headBgcStart": ["#183a5c", "标题栏渐变起点"],
+        "headBgcEnd": ["#145d69", "标题栏渐变终点"],
+        "navToggleBgc": ["#ffffff14", "导航折叠按钮背景"],
+        "navToggleBdc": ["#c5dcff45", "导航折叠按钮边框"],
+        "navToggleFc": ["#f3f8ff", "导航折叠按钮文字"],
+        "navPanelBgc": ["#151d28", "导航面板背景起点"],
+        "navPanelBgcEnd": ["#101720", "导航面板背景终点"],
+        "navGroupTitleFc": ["#7f93a8", "导航分组标题文字"],
+        "navLinkBgc": ["#18222d", "导航普通项背景"],
+        "navLinkFc": ["#d8e3ee", "导航普通项文字"],
+        "navLinkBdc": ["#2a3948", "导航普通项边框"],
+        "navLinkHvBgc": ["#203244", "导航普通项悬停背景"],
+        "navLinkHvFc": ["#f4f8fc", "导航普通项悬停文字"],
+        "navLinkAcStart": ["#2467a7", "导航普通项激活渐变起点"],
+        "navLinkAcEnd": ["#2e88b4", "导航普通项激活渐变终点"],
+        "navEventBgc": ["#22294a", "导航活动项背景"],
+        "navEventFc": ["#e1e6ff", "导航活动项文字"],
+        "navEventHvBgc": ["#2a3561", "导航活动项悬停背景"],
+        "navEventHvFc": ["#f4f6ff", "导航活动项悬停文字"],
+        "navEventAcStart": ["#5161d1", "导航活动项激活渐变起点"],
+        "navEventAcEnd": ["#6b8feb", "导航活动项激活渐变终点"],
+        "navUpdateStart": ["#d8a117", "导航刷新项渐变起点"],
+        "navUpdateEnd": ["#f0c95f", "导航刷新项渐变终点"],
+        "navUpdateFc": ["#1b1e22", "导航刷新项文字"],
+        "navUpdateHvStart": ["#e1b334", "导航刷新项悬停起点"],
+        "navUpdateHvEnd": ["#f6d985", "导航刷新项悬停终点"],
+        "navUpdateHvFc": ["#11161c", "导航刷新项悬停文字"],
+        "navGithubBgc": ["#1d3d32", "导航链接项背景"],
+        "navGithubFc": ["#d3f5de", "导航链接项文字"],
+        "navGithubHvBgc": ["#275343", "导航链接项悬停背景"],
+        "navGithubHvFc": ["#effff4", "导航链接项悬停文字"],
+        "cardBdc": ["#293746", "卡片边框色"],
+        "sectionBgc": ["#1a212b", "分区背景起点"],
+        "sectionBgcEnd": ["#151c26", "分区背景终点"],
+        "sectionBdc": ["#2a3644", "分区边框色"],
+        "pageTitleFc": ["#dce7f1", "页面标题色"],
+        "pageTitleBdc": ["#2b3744", "页面标题分隔线"],
+        "plainTextFc": ["#b7c6d3", "正文说明文字"],
+        "tableWrapBdc": ["#2a3644", "表格容器边框"],
+        "tableBorderColor": ["#2a3644", "表格外边框"],
+        "tableCellBdc": ["#24313d", "表格单元格边框"],
+        "pageNavBtnBgc": ["#1a2430", "分页按钮背景"],
+        "pageNavBtnFc": ["#d9e4ee", "分页按钮文字"],
+        "pageNavBtnBdc": ["#314352", "分页按钮边框"],
+        "pageNavBtnHvBgc": ["#24364a", "分页按钮悬停背景"],
+        "trophyActiveBgc": ["#25598a", "奖杯选中背景"],
+        "toastInfoStart": ["#245f99", "信息提示起点"],
+        "toastInfoEnd": ["#2b84b5", "信息提示终点"],
+        "toastSuccStart": ["#2d8b47", "成功提示起点"],
+        "toastSuccEnd": ["#44ad61", "成功提示终点"],
+        "toastErrStart": ["#b64040", "失败提示起点"],
+        "toastErrEnd": ["#d55b5b", "失败提示终点"],
         "headFc": ["#f6f8fa", "标题 字色"],
-        "navBgc": ["#2d333b", "导航栏背景色"],
-        "navABgc": ["#2d333b", "导航栏项目 背景色"],
-        "navAFc": ["#adbac7", "导航栏项目 字色"],
-        "navHvBgc": ["#373e47", "导航栏项目悬停 背景色"],
-        "navHvFc": ["#cdd9e5", "导航栏项目 悬停 字色"],
-        "navAcBgc": ["#444c56", "导航栏项目 激活 背景色"],
         "navAcFc": ["#ffffff", "导航栏项目 激活 字色"],
-        "navEvBgc": ["#053275", "导航栏活动项 背景色"],
-        "navEvFc": ["#ffffff", "导航栏活动项 字色"],
-        "navEvHvBgc": ["#123a7b", "导航栏活动项 悬停 背景色"],
-        "navEvHvFc": ["#ffffff", "导航栏活动项 悬停 字色"],
-        "navEvAcBgc": ["#0c4ba3", "导航栏活动项 激活 背景色"],
         "navEvAcFc": ["#ffffff", "导航栏活动项 激活 字色"],
-        "navUpBgc": ["#d19300", "导航栏刷新/链接项 背景色"],
-        "navUpFc": ["#24292e", "导航栏刷新/链接项 字色"],
-        "navUpHvBgc": ["#d6a62b", "导航栏刷新/链接项 悬停 背景色"],
-        "navUpHvFc": ["#24292e", "导航栏刷新/链接项 悬停 字色"],
-        "contentBgc": ["#1e2227", "内容区域 背景色"],
         "contentFc": ["#dae5f0", "内容区域 字色"],
         "tableFc": ["#ecf1f5", "表格 字色"],
         "tableOddRowBgc": ["#2d333b", "表格 奇数行 背景色"],
@@ -2485,41 +2695,118 @@ const defaultThemes = {
         "bvpkLose": ["#d33a2f", "bvpk失败 背景色"],
         "bvpkDraw": ["#444c56", "bvpk平局 背景色"],
         "bvpkSolo": ["#3fb950", "bvpk独占 背景色"],
-        "dailyPBLabelFc": ["#e1d5d5", "每日pb标签字色"]
+        "dailyPBLabelFc": ["#e1d5d5", "每日pb标签字色"],
+        "dailyPBCount1": ["#274a31", "每日PB 局数色阶1"],
+        "dailyPBCount2": ["#2f6540", "每日PB 局数色阶2"],
+        "dailyPBCount3": ["#3d8555", "每日PB 局数色阶3"],
+        "dailyPBCount4": ["#48a568", "每日PB 局数色阶4"],
+        "dailyPBCount5": ["#63bf80", "每日PB 局数色阶5"],
+        "dailyPBCount6": ["#8fd6a2", "每日PB 局数色阶6"],
+        "dailyPBTime1": ["#3a1c2e", "每日PB 时间色阶1"],
+        "dailyPBTime2": ["#5a2746", "每日PB 时间色阶2"],
+        "dailyPBTime3": ["#74325f", "每日PB 时间色阶3"],
+        "dailyPBTime4": ["#94417a", "每日PB 时间色阶4"],
+        "dailyPBTime5": ["#b05a95", "每日PB 时间色阶5"],
+        "dailyPBTime6": ["#cc7ab0", "每日PB 时间色阶6"],
+        "dailyPBBvs1": ["#3b1b1b", "每日PB 3BV/s色阶1"],
+        "dailyPBBvs2": ["#5a2323", "每日PB 3BV/s色阶2"],
+        "dailyPBBvs3": ["#7b2f2f", "每日PB 3BV/s色阶3"],
+        "dailyPBBvs4": ["#9f4040", "每日PB 3BV/s色阶4"],
+        "dailyPBBvs5": ["#c35555", "每日PB 3BV/s色阶5"],
+        "dailyPBBvs6": ["#de7474", "每日PB 3BV/s色阶6"],
+        "dailyPBEff1": ["#3a2815", "每日PB 效率色阶1"],
+        "dailyPBEff2": ["#5c3a18", "每日PB 效率色阶2"],
+        "dailyPBEff3": ["#7b4b1b", "每日PB 效率色阶3"],
+        "dailyPBEff4": ["#9d5f1f", "每日PB 效率色阶4"],
+        "dailyPBEff5": ["#bf7827", "每日PB 效率色阶5"],
+        "dailyPBEff6": ["#d9964c", "每日PB 效率色阶6"],
+        "dailyPBBlind1": ["#122540", "每日PB 盲扫色阶1"],
+        "dailyPBBlind2": ["#17345e", "每日PB 盲扫色阶2"],
+        "dailyPBBlind3": ["#1f4a85", "每日PB 盲扫色阶3"],
+        "dailyPBBlind4": ["#2b67b5", "每日PB 盲扫色阶4"],
+        "dailyPBBlind5": ["#4b88d3", "每日PB 盲扫色阶5"],
+        "dailyPBBlind6": ["#79addf", "每日PB 盲扫色阶6"]
     },
     "鲜艳": {
         "themeName": "鲜艳",
         "introduce": "",
-        "headBgc": ["#1ABCBD", "标题 背景色"],
+        "ui-bg": ["#fff4f7", "页面主背景"],
+        "ui-panel": ["#fffdfd", "内容卡片背景"],
+        "ui-border": ["#f2cad5", "全局边框色"],
+        "ui-shadow": ["0 14px 32px rgba(241, 105, 147, 0.18)", "全局阴影"],
+        "ui-text-main": ["#2d2438", "主文字色"],
+        "ui-text-muted": ["#7b6075", "次级文字色"],
+        "scrollbar-track": ["#ffe8ef", "滚动条轨道"],
+        "scrollbar-thumb": ["#f58aa7", "滚动条滑块"],
+        "scrollbar-thumb-hover": ["#ed6f94", "滚动条滑块悬停"],
+        "scrollbar-thumb-active": ["#d6577f", "滚动条滑块按下"],
+        "bodyBgGrad1": ["#ffdbe8", "页面背景渐变一"],
+        "bodyBgGrad2": ["#ffe3ef", "页面背景渐变二"],
+        "headBgcStart": ["#ff5e86", "标题栏渐变起点"],
+        "headBgcEnd": ["#ffae53", "标题栏渐变终点"],
+        "navToggleBgc": ["#ffffff2b", "导航折叠按钮背景"],
+        "navToggleBdc": ["#ffffff8f", "导航折叠按钮边框"],
+        "navToggleFc": ["#ffffff", "导航折叠按钮文字"],
+        "navPanelBgc": ["#fff4f4", "导航面板背景起点"],
+        "navPanelBgcEnd": ["#fff8ee", "导航面板背景终点"],
+        "navGroupTitleFc": ["#9a6b83", "导航分组标题文字"],
+        "navLinkBgc": ["#ffffff", "导航普通项背景"],
+        "navLinkFc": ["#50334b", "导航普通项文字"],
+        "navLinkBdc": ["#f0ccda", "导航普通项边框"],
+        "navLinkHvBgc": ["#fff0f5", "导航普通项悬停背景"],
+        "navLinkHvFc": ["#42293f", "导航普通项悬停文字"],
+        "navLinkAcStart": ["#f75f87", "导航普通项激活渐变起点"],
+        "navLinkAcEnd": ["#ff8f5f", "导航普通项激活渐变终点"],
+        "navEventBgc": ["#eef1ff", "导航活动项背景"],
+        "navEventFc": ["#47407a", "导航活动项文字"],
+        "navEventHvBgc": ["#e0e7ff", "导航活动项悬停背景"],
+        "navEventHvFc": ["#322d67", "导航活动项悬停文字"],
+        "navEventAcStart": ["#7a70f4", "导航活动项激活渐变起点"],
+        "navEventAcEnd": ["#47c7e8", "导航活动项激活渐变终点"],
+        "navUpdateStart": ["#ffd64b", "导航刷新项渐变起点"],
+        "navUpdateEnd": ["#ffb45d", "导航刷新项渐变终点"],
+        "navUpdateFc": ["#593109", "导航刷新项文字"],
+        "navUpdateHvStart": ["#ffe06f", "导航刷新项悬停起点"],
+        "navUpdateHvEnd": ["#ffc97b", "导航刷新项悬停终点"],
+        "navUpdateHvFc": ["#4f2905", "导航刷新项悬停文字"],
+        "navGithubBgc": ["#ffeaf1", "导航链接项背景"],
+        "navGithubFc": ["#7a2f50", "导航链接项文字"],
+        "navGithubHvBgc": ["#ffd8e6", "导航链接项悬停背景"],
+        "navGithubHvFc": ["#5f2340", "导航链接项悬停文字"],
+        "cardBdc": ["#f2cad5", "卡片边框色"],
+        "sectionBgc": ["#fffdfd", "分区背景起点"],
+        "sectionBgcEnd": ["#fff6f8", "分区背景终点"],
+        "sectionBdc": ["#f5d6df", "分区边框色"],
+        "pageTitleFc": ["#793756", "页面标题色"],
+        "pageTitleBdc": ["#f2d5df", "页面标题分隔线"],
+        "plainTextFc": ["#734d63", "正文说明文字"],
+        "tableWrapBdc": ["#f2d2dc", "表格容器边框"],
+        "tableBorderColor": ["#efccd7", "表格外边框"],
+        "tableCellBdc": ["#f6e1e7", "表格单元格边框"],
+        "pageNavBtnBgc": ["#fff4f7", "分页按钮背景"],
+        "pageNavBtnFc": ["#61384f", "分页按钮文字"],
+        "pageNavBtnBdc": ["#f0c7d5", "分页按钮边框"],
+        "pageNavBtnHvBgc": ["#ffe7ef", "分页按钮悬停背景"],
+        "trophyActiveBgc": ["#d8537d", "奖杯选中背景"],
+        "toastInfoStart": ["#ff6a8d", "信息提示起点"],
+        "toastInfoEnd": ["#ff9a57", "信息提示终点"],
+        "toastSuccStart": ["#17b792", "成功提示起点"],
+        "toastSuccEnd": ["#38d7a6", "成功提示终点"],
+        "toastErrStart": ["#dc4d63", "失败提示起点"],
+        "toastErrEnd": ["#f06b82", "失败提示终点"],
         "headFc": ["#FFFFFF", "标题 字色"],
-        "navBgc": ["#F4A5A1", "导航栏背景色"],
-        "navABgc": ["#F4A5A1", "导航栏项目 背景色"],
-        "navAFc": ["#1E293B", "导航栏项目 字色"],
-        "navHvBgc": ["#ff8295", "导航栏项目悬停 背景色"],
-        "navHvFc": ["#1E293B", "导航栏项目 悬停 字色"],
-        "navAcBgc": ["#f85d74", "导航栏项目 激活 背景色"],
         "navAcFc": ["#FFFFFF", "导航栏项目 激活 字色"],
-        "navEvBgc": ["#51d9d9", "导航栏活动项 背景色"],
-        "navEvFc": ["#1E293B", "导航栏活动项 字色"],
-        "navEvHvBgc": ["#1ABCBD", "导航栏活动项 悬停 背景色"],
-        "navEvHvFc": ["#1E293B", "导航栏活动项 悬停 字色"],
-        "navEvAcBgc": ["#1ABCBD", "导航栏活动项 激活 背景色"],
         "navEvAcFc": ["#FFFFFF", "导航栏活动项 激活 字色"],
-        "navUpBgc": ["#FFE246", "导航栏刷新/链接项 背景色"],
-        "navUpFc": ["#1E293B", "导航栏刷新/链接项 字色"],
-        "navUpHvBgc": ["#ffea70", "导航栏刷新/链接项 悬停 背景色"],
-        "navUpHvFc": ["#1E293B", "导航栏刷新/链接项 悬停 字色"],
-        "contentBgc": ["#FFFFFF", "内容区域 背景色"],
         "contentFc": ["#1E293B", "内容区域 字色"],
-        "tableFc": ["#081221", "表格 字色"],
-        "tableOddRowBgc": ["#06b8a0", "表格 奇数行 背景色"],
-        "tableEvenRowBgc": ["#e8f7f7", "表格 偶数行 背景色"],
-        "tableTic1ColBgc": ["#06b8a0", "有标题的表格 标题列 背景色"],
-        "tableTic1RowBgc": ["#06b8a0", "有标题的表格 标题行 背景色"],
-        "tableTicOddRowBgc": ["#e8f7f7", "有标题的表格 奇数行 背景色"],
-        "tableTicEvenRowBgc": ["#79D1C3", "有标题的表格 偶数行 背景色"],
-        "tableTicHvRowBgc": ["#4db0c6", "有标题的表格 悬停行 背景色"],
-        "tableExtraRowBgc": ["#D9F99D", "表格 额外标题（奖杯栏）"],
+        "tableFc": ["#4b2435", "表格 字色"],
+        "tableOddRowBgc": ["#fff3f7", "表格 奇数行 背景色"],
+        "tableEvenRowBgc": ["#ffe4ee", "表格 偶数行 背景色"],
+        "tableTic1ColBgc": ["#f58aa7", "有标题的表格 标题列 背景色"],
+        "tableTic1RowBgc": ["#f58aa7", "有标题的表格 标题行 背景色"],
+        "tableTicOddRowBgc": ["#fff1f6", "有标题的表格 奇数行 背景色"],
+        "tableTicEvenRowBgc": ["#ffdce8", "有标题的表格 偶数行 背景色"],
+        "tableTicHvRowBgc": ["#ffb8cc", "有标题的表格 悬停行 背景色"],
+        "tableExtraRowBgc": ["#ffcad8", "表格 额外标题（奖杯栏）"],
         "atv1BestBgc": ["#b3eb9d", "门票价格图例 最赚"],
         "atv1MidBgc": ["#ddf196", "门票价格图例 次赚"],
         "atv1WorstBgc": ["#e4c79a", "门票价格图例 最亏"],
@@ -2542,7 +2829,7 @@ const defaultThemes = {
         "inputFcSdc": ["#f7497180", "输入框 聚焦 阴影色"],
         "sliderCircleC": ["#FFFFFF", "滑块 填充色"],
         "sliderOffBgc": ["#CBD5E1", "滑块 关闭 背景色"],
-        "sliderOnBgc": ["#26e3dd", "滑块 开启 背景色"],
+        "sliderOnBgc": ["#ff7fa8", "滑块 开启 背景色"],
         "selectBgc": ["#ffeaef", "下拉菜单 背景色"],
         "selectBdc": ["#CBD5E1", "下拉菜单 边框色"],
         "selectFc": ["#1E293B", "下拉菜单 字色"],
@@ -2558,7 +2845,37 @@ const defaultThemes = {
         "bvpkWin": ["#10B981", "bvpk获胜 背景色"],
         "bvpkLose": ["#EF4444", "bvpk失败 背景色"],
         "bvpkDraw": ["#3B82F6", "bvpk平局 背景色"],
-        "bvpkSolo": ["#A3E635", "bvpk独占 背景色"],
-        "dailyPBLabelFc": ["#000000", "每日pb标签字色"]
+        "bvpkSolo": ["#ff6f9e", "bvpk独占 背景色"],
+        "dailyPBLabelFc": ["#000000", "每日pb标签字色"],
+        "dailyPBCount1": ["#ffe5ef", "每日PB 局数色阶1"],
+        "dailyPBCount2": ["#ffc9da", "每日PB 局数色阶2"],
+        "dailyPBCount3": ["#ffabc7", "每日PB 局数色阶3"],
+        "dailyPBCount4": ["#ff87ae", "每日PB 局数色阶4"],
+        "dailyPBCount5": ["#f25f90", "每日PB 局数色阶5"],
+        "dailyPBCount6": ["#d83f74", "每日PB 局数色阶6"],
+        "dailyPBTime1": ["#ffe0eb", "每日PB 时间色阶1"],
+        "dailyPBTime2": ["#ffc1d7", "每日PB 时间色阶2"],
+        "dailyPBTime3": ["#ff9ebf", "每日PB 时间色阶3"],
+        "dailyPBTime4": ["#ff7fa8", "每日PB 时间色阶4"],
+        "dailyPBTime5": ["#f7598b", "每日PB 时间色阶5"],
+        "dailyPBTime6": ["#db386b", "每日PB 时间色阶6"],
+        "dailyPBBvs1": ["#ffe4ea", "每日PB 3BV/s色阶1"],
+        "dailyPBBvs2": ["#ffccd7", "每日PB 3BV/s色阶2"],
+        "dailyPBBvs3": ["#ffb0c2", "每日PB 3BV/s色阶3"],
+        "dailyPBBvs4": ["#ff8faa", "每日PB 3BV/s色阶4"],
+        "dailyPBBvs5": ["#f2668a", "每日PB 3BV/s色阶5"],
+        "dailyPBBvs6": ["#d6456c", "每日PB 3BV/s色阶6"],
+        "dailyPBEff1": ["#fff0d9", "每日PB 效率色阶1"],
+        "dailyPBEff2": ["#ffd7a8", "每日PB 效率色阶2"],
+        "dailyPBEff3": ["#ffbe7d", "每日PB 效率色阶3"],
+        "dailyPBEff4": ["#ffa65f", "每日PB 效率色阶4"],
+        "dailyPBEff5": ["#ff8745", "每日PB 效率色阶5"],
+        "dailyPBEff6": ["#e36a2e", "每日PB 效率色阶6"],
+        "dailyPBBlind1": ["#ffe6f3", "每日PB 盲扫色阶1"],
+        "dailyPBBlind2": ["#ffcce6", "每日PB 盲扫色阶2"],
+        "dailyPBBlind3": ["#ffb0d8", "每日PB 盲扫色阶3"],
+        "dailyPBBlind4": ["#ff89c1", "每日PB 盲扫色阶4"],
+        "dailyPBBlind5": ["#f760a8", "每日PB 盲扫色阶5"],
+        "dailyPBBlind6": ["#d63f86", "每日PB 盲扫色阶6"]
     }
 };

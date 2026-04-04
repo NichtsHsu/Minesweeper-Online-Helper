@@ -1,13 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
+    let isBatchUpdatingFriendNames = false;
+
     chrome.storage.local.get(['contactsList'], function(result) {
         let contactsList = result.contactsList || {};
         var index = 0;
         if (Object.keys(contactsList).length > 0) {
             for (let uid in contactsList) {
-                if (Array.isArray(contactsList[uid])) {
-                    break;
+                if (!Array.isArray(contactsList[uid])) {
+                    contactsList[uid] = [contactsList[uid], index, ''];
+                } else {
+                    if (typeof contactsList[uid][1] !== 'number') {
+                        contactsList[uid][1] = index;
+                    }
+                    if (typeof contactsList[uid][2] !== 'string') {
+                        contactsList[uid][2] = '';
+                    }
                 }
-                contactsList[uid] = [contactsList[uid], index];
                 index++;
             }
         }
@@ -90,6 +98,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let sortFriendMethod = document.getElementById('sortFriendMethod');
     let friendUidDesc = document.getElementById('friendUidDesc');
     let friendNameDesc = document.getElementById('friendNameDesc');
+    const sortButtons = [
+        document.getElementById('sortFriendDefalt'),
+        document.getElementById('sortFriendUid'),
+        document.getElementById('sortFriendName')
+    ];
     document.getElementById('sortFriendDefalt').addEventListener('click', function() {
         sortFriendMethod.textContent = 0;
         setTimeout(() => {
@@ -119,6 +132,121 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             displayContacts();
         }, 10);
+    });
+
+    /* 批量更新好友用户名（按顺序打开主页并抓取） */
+    document.getElementById('updateFriendNames').addEventListener('click', function() {
+        if (isBatchUpdatingFriendNames) {
+            return;
+        }
+        const noticeEle = document.getElementById('addFriendNotice');
+        const triggerButton = document.getElementById('updateFriendNames');
+
+        // Follow the current visible order in table rather than sorting by uid.
+        const orderedUids = Array.from(document.querySelectorAll('#contactsTable tr')).map((row) => {
+            const uidCell = row.cells && row.cells.length > 1 ? row.cells[1] : null;
+            return uidCell ? uidCell.textContent.trim() : '';
+        }).filter((uid) => uid !== '');
+
+        chrome.storage.local.get(['contactsList'], function(result) {
+            const contactsList = result.contactsList || {};
+
+            if (orderedUids.length === 0) {
+                noticeEle.textContent = '暂无好友可更新';
+                return;
+            }
+
+            isBatchUpdatingFriendNames = true;
+            triggerButton.disabled = true;
+            sortButtons.forEach((button) => {
+                button.disabled = true;
+            });
+            let updatedCount = 0;
+            let failedCount = 0;
+
+            function finishBatchUpdate() {
+                isBatchUpdatingFriendNames = false;
+                triggerButton.disabled = false;
+                sortButtons.forEach((button) => {
+                    button.disabled = false;
+                });
+                noticeEle.textContent = '更新完成：成功 ' + updatedCount + '，失败 ' + failedCount;
+                displayContacts();
+            }
+
+            function processNext(index) {
+                if (index >= orderedUids.length) {
+                    finishBatchUpdate();
+                    return;
+                }
+
+                const uid = orderedUids[index];
+                noticeEle.textContent = '正在更新好友用户名（' + (index + 1) + '/' + orderedUids.length + '）：' + uid;
+
+                chrome.tabs.create({ url: 'https://minesweeper.online/cn/player/' + uid, active: false }, function(tab) {
+                    if (!tab || !tab.id) {
+                        failedCount++;
+                        setTimeout(() => {
+                            processNext(index + 1);
+                        }, 150);
+                        return;
+                    }
+
+                    const tabId = tab.id;
+                    const maxAttempts = 120;
+                    let attempts = 0;
+
+                    const timer = setInterval(() => {
+                        attempts++;
+                        chrome.scripting.executeScript({
+                            target: { tabId },
+                            function: function() {
+                                const nameEle = document.querySelector('#PlayerBlock > h2 > div.pull-left > span');
+                                return nameEle ? nameEle.textContent.trim() : '';
+                            }
+                        }, function(results) {
+                            const hasRuntimeError = !!chrome.runtime.lastError;
+                            const name = (!hasRuntimeError && results && results[0] && typeof results[0].result === 'string')
+                                ? results[0].result.trim()
+                                : '';
+
+                            if (name) {
+                                clearInterval(timer);
+                                chrome.tabs.remove(tabId, function() {});
+                                if (!Array.isArray(contactsList[uid])) {
+                                    contactsList[uid] = [name, index, ''];
+                                } else {
+                                    contactsList[uid][0] = name;
+                                    if (typeof contactsList[uid][2] !== 'string') {
+                                        contactsList[uid][2] = '';
+                                    }
+                                }
+                                updatedCount++;
+                                const row = document.getElementById('friend' + uid);
+                                if (row && row.cells && row.cells.length > 0) {
+                                    row.cells[0].textContent = name;
+                                }
+                                chrome.storage.local.set({ contactsList: contactsList }, function() {
+                                    displayContacts();
+                                    setTimeout(() => {
+                                        processNext(index + 1);
+                                    }, 150);
+                                });
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(timer);
+                                chrome.tabs.remove(tabId, function() {});
+                                failedCount++;
+                                setTimeout(() => {
+                                    processNext(index + 1);
+                                }, 150);
+                            }
+                        });
+                    }, 250);
+                });
+            }
+
+            processNext(0);
+        });
     });
 });
 
@@ -167,6 +295,15 @@ function displayContacts() {
                 uidCell.textContent = uid;
                 clickCopyText(uidCell);
 
+                var noteCell = friendRow.insertCell();
+                var noteInput = document.createElement('input');
+                noteInput.type = 'text';
+                noteInput.className = 'inputBox friendNoteInput';
+                noteInput.placeholder = '添加备注...';
+                noteInput.value = typeof contactsList[uid][2] === 'string' ? contactsList[uid][2] : '';
+                noteInput.setAttribute('data-uid', uid);
+                noteCell.appendChild(noteInput);
+
                 var openPage = document.createElement('button');
                 openPage.id = 'open' + uid;
                 openPage.className  = 'openFriend';
@@ -212,6 +349,7 @@ function displayContacts() {
                 df.appendChild(deleteFriend);
 
                 contactsLinks(uid);
+                bindFriendNoteInput(noteInput, uid);
             }
         } else {
             document.getElementById('noContacts').style.display = 'block';
@@ -300,6 +438,25 @@ function contactsLinks(uid) {
     });
 }
 
+function bindFriendNoteInput(input, uid) {
+    function saveNote() {
+        chrome.storage.local.get(['contactsList'], function(result) {
+            const contactsList = result.contactsList || {};
+            if (!contactsList[uid]) {
+                return;
+            }
+            if (!Array.isArray(contactsList[uid])) {
+                contactsList[uid] = [String(contactsList[uid]), 0, ''];
+            }
+            contactsList[uid][2] = input.value || '';
+            chrome.storage.local.set({ contactsList: contactsList });
+        });
+    }
+
+    input.addEventListener('change', saveNote);
+    input.addEventListener('blur', saveNote);
+}
+
 /* 点击昵称或uid复制 */
 function clickCopyText(ele) {
     // ele.style.cursor = 'pointer';
@@ -333,8 +490,11 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             var index = Object.keys(contactsList).length;
             if (contactsList[friendInfo[0]]) {
                 contactsList[friendInfo[0]][0] = friendInfo[1];
+                if (typeof contactsList[friendInfo[0]][2] !== 'string') {
+                    contactsList[friendInfo[0]][2] = '';
+                }
             } else {
-                contactsList[friendInfo[0]] = [friendInfo[1], index];
+                contactsList[friendInfo[0]] = [friendInfo[1], index, ''];
             }
             // 保存更新后的数据
             chrome.storage.local.set({ contactsList: contactsList });

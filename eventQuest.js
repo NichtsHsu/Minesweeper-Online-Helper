@@ -3,10 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('buttonEq');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url.includes('https://minesweeper.online/') && tab1[0].url.includes('event-quests')) {
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
-                button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -218,17 +218,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
         }
     });
     /* 统计奖牌榜 */
     const buttonTally = document.getElementById('buttonEqTally');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab2) {
         if (tab2[0].url.includes('https://minesweeper.online/') && tab2[0].url.includes('event-quests')) {
-            buttonTally.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(buttonTally, 'ready');
             buttonTally.style.cursor = 'pointer'; // 鼠标指针样式
             buttonTally.addEventListener('click', function () {
-                buttonTally.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(buttonTally, 'loading');
                 const tabId = tab2[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            buttonTally.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(buttonTally, 'disabled');
         }
     });
 });
@@ -471,7 +471,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let eqInfo = request.eqInfo;
         console.log('全球任务分析:', eqInfo);   // 在控制台打出结果
         chrome.storage.local.set({ eqInfo: eqInfo });     // 保存数据
-        document.getElementById('buttonEq').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        setPopupButtonState('buttonEq', 'success');
         const result = eqInfo.map(item => item + '<br>').join('');
         document.getElementById('result').innerHTML = result;
     } else if (request.action === 'sendEventQuestTallyMap') {
@@ -489,7 +489,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ eventQuestTallyMap: eventQuestTallyMap });     // 保存数据
             chrome.storage.local.set({ eventQuestRawRank: eventQuestRawRank });     // 保存数据
         });
-        document.getElementById('buttonEqTally').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        setPopupButtonState('buttonEqTally', 'success');
     }
 });
 

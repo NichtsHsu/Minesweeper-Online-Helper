@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('button3');
-    button.style.backgroundColor = '#9b9b9b'; // 默认灰色
+    setPopupButtonState(button, 'disabled');
     chrome.storage.local.get('pId', function (result) {
         const pId = result.pId;
         chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
             if (tab1[0].url.includes('https://minesweeper.online/') && tab1[0].url.includes('player/' + pId)) {
-                button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+                setPopupButtonState(button, 'ready');
                 button.style.cursor = 'pointer'; // 鼠标指针样式
                 button.addEventListener('click', function () {
-                    button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                    setPopupButtonState(button, 'loading');
                     const tabId = tab1[0].id;
                     chrome.scripting.executeScript({
                         target: { tabId },
@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             personalData[row][0] = userName;
     
                             console.log(personalData);
+                            return personalData;
     
                             // chrome.runtime.sendMessage({ action: 'sendPersonalData', personalData: personalData });
                             // saveAsCsv(personalData, '个人数据.csv');
@@ -291,10 +292,33 @@ document.addEventListener('DOMContentLoaded', function() {
                             //     }, 0);
                             // }
                         }
+                    }, function(results) {
+                        if (chrome.runtime.lastError) {
+                            console.error('刷新个人数据失败：', chrome.runtime.lastError.message);
+                            setPopupButtonState('button3', 'error');
+                            return;
+                        }
+
+                        if (!results || !results[0] || !results[0].result) {
+                            setPopupButtonState('button3', 'error');
+                            return;
+                        }
+
+                        const personalData = results[0].result;
+                        chrome.storage.local.set({ personalData: personalData });
+                        chrome.storage.local.get(['personalDataMap'], function (result) {
+                            const pdMap = result.personalDataMap || {};
+                            const currentDate = new Date();
+                            const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
+                            pdMap[newDate] = personalData;
+                            chrome.storage.local.set({ personalDataMap: pdMap });
+                        });
+
+                        setPopupButtonState('button3', 'success');
                     });
                 });
             } else {
-                button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+                setPopupButtonState(button, 'disabled');
             }
         });
     });
@@ -317,6 +341,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             chrome.storage.local.set({ personalDataMap: pdMap });
         });
 
-        document.getElementById('button3').style.backgroundColor = '#4caf50';
+        setPopupButtonState('button3', 'success');
     }
 });

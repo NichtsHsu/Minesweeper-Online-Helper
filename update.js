@@ -1,3 +1,34 @@
+/* 刷新按钮状态 */
+function setMainButtonState(buttonId, state) {
+    if (typeof window.setButtonState === 'function') {
+        window.setButtonState(buttonId, state);
+    }
+}
+
+/* 刷新任务打开页追踪与统一关闭 */
+if (!window.__refreshTabMap) {
+    window.__refreshTabMap = {};
+}
+
+function registerRefreshTab(taskKey, tabId) {
+    if (!taskKey || typeof tabId !== 'number') {
+        return;
+    }
+    window.__refreshTabMap[taskKey] = tabId;
+}
+
+function closeRefreshTab(taskKey) {
+    const tabId = window.__refreshTabMap[taskKey];
+    if (typeof tabId !== 'number') {
+        return false;
+    }
+    delete window.__refreshTabMap[taskKey];
+    chrome.tabs.remove(tabId, function() {});
+    return true;
+}
+
+window.closeRefreshTab = closeRefreshTab;
+
 /* 刷新价格、个人数据 */
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('update').addEventListener('click', function () {
@@ -26,8 +57,10 @@ document.addEventListener('DOMContentLoaded', function () {
 /* 刷新宝石场币 */
 function updateGems() {
     document.getElementById('flag1').textContent = 0;
-    chrome.tabs.create({ url: 'https://minesweeper.online/cn/marketplace', active: false }, function (tab1) {
+    setMainButtonState('updateMarketPage', 'loading');
+    chrome.tabs.create({ url: 'https://minesweeper.online/cn/marketplace', active: true }, function (tab1) {
         const ti1 = tab1.id;
+        registerRefreshTab('gems', ti1);
         var t1 = 1000;
         var flag;
         var count = 1;
@@ -37,9 +70,11 @@ function updateGems() {
             flag = document.getElementById('flag1').textContent;
             if (flag == 1) {
                 clearInterval(intervalGems);
-                chrome.tabs.remove(ti1, function() {});
+                closeRefreshTab('gems');
             } else if (count > countMax) {
                 clearInterval(intervalGems);
+                closeRefreshTab('gems');
+                setMainButtonState('updateMarketPage', 'error');
             } else {
                 count++;
             }
@@ -140,15 +175,12 @@ function updateGems() {
 /* 刷新竞技场门票 */
 function updateArenaTickets() {
     document.getElementById('flag2').textContent = 0;
+    setMainButtonState('updateAtPrice', 'loading');
     chrome.storage.local.get('autoUpdate', function (result) {
         // var backgroundCoe = 1;
-        var activePage = true;
-        if (result.autoUpdate[3][0]) {
-            // backgroundCoe = 4;
-            activePage = false;
-        }
-        chrome.tabs.create({ url: 'https://minesweeper.online/cn/marketplace', active: activePage }, function (tab2) {
+        chrome.tabs.create({ url: 'https://minesweeper.online/cn/marketplace', active: true }, function (tab2) {
             const ti2 = tab2.id;
+            registerRefreshTab('tickets', ti2);
             var t1 = 1000;
             extractAt(ti2);
             var flag;
@@ -158,9 +190,11 @@ function updateArenaTickets() {
                 flag = document.getElementById('flag2').textContent;
                 if (flag == 1) {
                     clearInterval(checkIntervalAt);
-                    chrome.tabs.remove(ti2, function() {});
+                    closeRefreshTab('tickets');
                 } else if (count > countMax) {
                     clearInterval(checkIntervalAt);
+                    closeRefreshTab('tickets');
+                    setMainButtonState('updateAtPrice', 'error');
                 } else {
                     count++;
                 }
@@ -387,8 +421,10 @@ function updateArenaTickets() {
 /* 刷新装备加成 */
 function updateEquipmentStats() {
     document.getElementById('flagEquip').textContent = 0;
-    chrome.tabs.create({ url: 'https://minesweeper.online/cn/equipment', active: false }, function (tabEquip) {
+    setMainButtonState('updateEquipmentStats', 'loading');
+    chrome.tabs.create({ url: 'https://minesweeper.online/cn/equipment', active: true }, function (tabEquip) {
         const tiEquip = tabEquip.id;
+        registerRefreshTab('equip', tiEquip);
         var t1 = 1000;
         var flag;
         var count = 1;
@@ -398,9 +434,11 @@ function updateEquipmentStats() {
             flag = document.getElementById('flagEquip').textContent;
             if (flag == 1) {
                 clearInterval(intervalEquip);
-                chrome.tabs.remove(tiEquip, function() {});
+                closeRefreshTab('equip');
             } else if (count > countMax) {
                 clearInterval(intervalEquip);
+                closeRefreshTab('equip');
+                setMainButtonState('updateEquipmentStats', 'error');
             } else {
                 count++;
             }
@@ -533,9 +571,11 @@ function updateEquipmentStats() {
 function updateStatistics() {
     const pId = document.getElementById('pIdNow').innerText;
     document.getElementById('flag5').textContent = 0;
+    setMainButtonState('updateStatistic', 'loading');
     const u1 = 'https://minesweeper.online/cn/statistics/' + pId;
-    chrome.tabs.create({ url: u1, active: false }, function (tab5) {
+    chrome.tabs.create({ url: u1, active: true }, function (tab5) {
         const ti5 = tab5.id;
+        registerRefreshTab('statistics', ti5);
         var t1 = 1000;
         var flag;
         var count = 1;
@@ -545,9 +585,11 @@ function updateStatistics() {
             flag = document.getElementById('flag5').textContent;
             if (flag == 1) {
                 clearInterval(intervalStats);
-                chrome.tabs.remove(ti5, function() {});
+                closeRefreshTab('statistics');
             } else if (count > countMax) {
                 clearInterval(intervalStats);
+                closeRefreshTab('statistics');
+                setMainButtonState('updateStatistic', 'error');
             } else {
                 count++;
             }
@@ -611,9 +653,11 @@ function updateStatistics() {
 function updatePersonalData() {
     const pId = document.getElementById('pIdNow').innerText;
     document.getElementById('flag3').textContent = 0;
+    setMainButtonState('updatePersonalData', 'loading');
     const u2 = 'https://minesweeper.online/cn/player/' + pId;
-    chrome.tabs.create({ url: u2, active: false }, function (tab3) {
+    chrome.tabs.create({ url: u2, active: true }, function (tab3) {
         const ti3 = tab3.id;
+        registerRefreshTab('personal', ti3);
         var t1 = 1000;
         var flag;
         var count = 1;
@@ -623,9 +667,11 @@ function updatePersonalData() {
             flag = document.getElementById('flag3').textContent;
             if (flag == 1) {
                 clearInterval(intervalPd);
-                chrome.tabs.remove(ti3, function() {});
+                closeRefreshTab('personal');
             } else if (count > countMax) {
                 clearInterval(intervalPd);
+                closeRefreshTab('personal');
+                setMainButtonState('updatePersonalData', 'error');
             } else {
                 count++;
             }
@@ -911,8 +957,10 @@ function updatePersonalData() {
 /* 刷新游戏经济 */
 function updateEconomy() {
     document.getElementById('flagPe').textContent = 0;
-    chrome.tabs.create({ url: 'https://minesweeper.online/cn/economy', active: false }, function (tabEco) {
+    setMainButtonState('updateEconomy', 'loading');
+    chrome.tabs.create({ url: 'https://minesweeper.online/cn/economy', active: true }, function (tabEco) {
         const tiE = tabEco.id;
+        registerRefreshTab('economy', tiE);
         var t1 = 1000;
         var flag;
         var count = 1;
@@ -922,9 +970,11 @@ function updateEconomy() {
             flag = document.getElementById('flagPe').textContent;
             if (flag == 1) {
                 clearInterval(intervalEco);
-                chrome.tabs.remove(tiE, function() {});
+                closeRefreshTab('economy');
             } else if (count > countMax) {
                 clearInterval(intervalEco);
+                closeRefreshTab('economy');
+                setMainButtonState('updateEconomy', 'error');
             } else {
                 count++;
             }
@@ -1005,11 +1055,11 @@ function updateEconomy() {
 /* 分析全球任务 */
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('updateEq').addEventListener('click', function () {
-        const button = document.getElementById('updateEq');
-        button.style.backgroundColor = getColorSetting('buttonProgBgc');   // 对应按钮变为橙色，表示运行中
+        setMainButtonState('updateEq', 'loading');
         document.getElementById('flag4').textContent = 0;
-        chrome.tabs.create({ url: 'https://minesweeper.online/cn/event-quests', active: false }, function (tab0) {
+        chrome.tabs.create({ url: 'https://minesweeper.online/cn/event-quests', active: true }, function (tab0) {
             const ti0 = tab0.id;
+            registerRefreshTab('eventQuest', ti0);
             recurEq(ti0, 0);
 
             function recurEq(tabId, i) {
@@ -1019,7 +1069,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     extractEq(tabId);
                     const flag = document.getElementById('flag4').textContent;
                     if (flag == 1 || i > maxI) {
-                        chrome.tabs.remove(tabId, function() {});
+                        closeRefreshTab('eventQuest');
+                        if (flag != 1) {
+                            setMainButtonState('updateEq', 'error');
+                        }
                     } else {
                         recurEq(tabId, i + 1);
                     }
@@ -1227,13 +1280,14 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
     const button = document.getElementById('updateWheel');
     button.addEventListener('click', function () {
-        button.style.backgroundColor = getColorSetting('buttonProgBgc');   // 对应按钮变为橙色，表示运行中
+        setMainButtonState('updateWheel', 'loading');
         document.getElementById('flagWheel').textContent = 0;
         const pId = document.getElementById('pIdNow').innerText;
         document.getElementById('flag3').textContent = 0;
         const uw = 'https://minesweeper.online/cn/quests/' + pId;
         chrome.tabs.create({ url: uw, active: true }, function (tab) {
             const ti = tab.id;
+            registerRefreshTab('wheel', ti);
             var t1 = 1000;
             analyseWheel(ti);
             var flag;
@@ -1243,9 +1297,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 flag = document.getElementById('flagWheel').textContent;
                 if (flag == 1) {
                     clearInterval(checkIntervalWh);
-                    chrome.tabs.remove(ti, function() {});
+                    closeRefreshTab('wheel');
                 } else if (count > countMax) {
                     clearInterval(checkIntervalWh);
+                    closeRefreshTab('wheel');
+                    setMainButtonState('updateWheel', 'error');
                 } else {
                     count++;
                 }

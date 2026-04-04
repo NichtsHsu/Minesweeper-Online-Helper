@@ -1,3 +1,351 @@
+/* 主界面按钮状态 */
+const UI_BUTTON_STATE_CLASS_MAP = {
+    idle: 'ui-btn-idle',
+    loading: 'ui-btn-loading',
+    success: 'ui-btn-success',
+    error: 'ui-btn-error'
+};
+
+const UI_BUTTON_ACTION_LABEL_MAP = {
+    updateStatistic: '刷新游戏数据',
+    updateMarketPage: '刷新价格',
+    updateAtPrice: '刷新票价',
+    updatePersonalData: '刷新个人数据',
+    updateEquipmentStats: '刷新装备加成',
+    updateEconomy: '刷新财产估值',
+    updateEq: '分析活动任务',
+    updateWheel: '分析转盘选项'
+};
+
+function showMainToast(message, tone = 'info') {
+    const host = document.getElementById('toastHost');
+    if (!host || !message) {
+        return;
+    }
+
+    while (host.children.length >= 4) {
+        host.removeChild(host.firstElementChild);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `uiToast ${tone}`;
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    host.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('closing');
+        setTimeout(() => {
+            if (toast.parentElement === host) {
+                host.removeChild(toast);
+            }
+        }, 200);
+    }, 2400);
+}
+
+function notifyMainButtonState(buttonId, state, previousState) {
+    if (state === previousState) {
+        return;
+    }
+
+    const actionName = UI_BUTTON_ACTION_LABEL_MAP[buttonId];
+    if (!actionName) {
+        return;
+    }
+
+    if (state === 'success') {
+        showMainToast(`${actionName}完成`, 'success');
+    } else if (state === 'error') {
+        showMainToast(`${actionName}失败或超时`, 'error');
+    }
+}
+
+function setButtonState(buttonId, state = 'idle') {
+    const button = document.getElementById(buttonId);
+    if (!button) {
+        return;
+    }
+    const previousState = button.dataset.uiState || 'idle';
+    const nextClass = UI_BUTTON_STATE_CLASS_MAP[state] || UI_BUTTON_STATE_CLASS_MAP.idle;
+    button.classList.remove(...Object.values(UI_BUTTON_STATE_CLASS_MAP));
+    button.classList.add(nextClass);
+    button.dataset.uiState = state;
+    notifyMainButtonState(buttonId, state, previousState);
+}
+
+function initializeMainButtonStates() {
+    [
+        'updateStatistic',
+        'updateMarketPage',
+        'updateAtPrice',
+        'updatePersonalData',
+        'updateEquipmentStats',
+        'updateEconomy',
+        'updateEq',
+        'updateWheel'
+    ].forEach((buttonId) => setButtonState(buttonId, 'idle'));
+}
+
+window.setButtonState = setButtonState;
+window.resetMainButtonStates = initializeMainButtonStates;
+window.showMainToast = showMainToast;
+
+/* 主界面表格分页 */
+const TABLE_PAGE_SIZE_DEFAULT = 10;
+let tablePageSizeSetting = TABLE_PAGE_SIZE_DEFAULT;
+const tableRenderCache = {};
+const tablePaginationState = {};
+
+function normalizeTablePageSize(rawValue) {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+        return TABLE_PAGE_SIZE_DEFAULT;
+    }
+    return Math.min(200, Math.max(1, Math.floor(parsed)));
+}
+
+function loadTablePageSizeSetting() {
+    chrome.storage.local.get(['tablePageSize'], function(result) {
+        tablePageSizeSetting = normalizeTablePageSize(result.tablePageSize);
+        const activePage = document.querySelector('#content .page.active');
+        if (activePage) {
+            refreshPageTablePagination(activePage.id);
+        }
+    });
+}
+
+function cacheTableMatrix(matrix) {
+    return (matrix || []).map((row) => Array.isArray(row) ? row.slice() : [row]);
+}
+
+function getPaginationContainer(table) {
+    if (!table || !table.parentElement) {
+        return null;
+    }
+
+    const wrapper = table.parentElement.classList.contains('tableWrap') ? table.parentElement : table;
+    const host = wrapper.parentElement;
+    if (!host) {
+        return null;
+    }
+
+    const tableId = table.id;
+    let container = host.querySelector(`.tablePagination[data-table-id="${tableId}"]`);
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'tablePagination';
+        container.dataset.tableId = tableId;
+        host.insertBefore(container, wrapper.nextSibling);
+    }
+    return container;
+}
+
+function shouldTableHavePagination(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        return true;
+    }
+    
+    // 检查表格是否有 data-no-pagination 属性
+    if (table.hasAttribute('data-no-pagination')) {
+        return false;
+    }
+    
+    return true;
+}
+
+function applyPaginationToTable(tableId) {
+    // 检查该表格是否应该有分页
+    if (!shouldTableHavePagination(tableId)) {
+        const table = document.getElementById(tableId);
+        if (table) {
+            const rows = table.rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = '';
+            }
+        }
+        const container = getPaginationContainer(table);
+        if (container) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+        }
+        return;
+    }
+    
+    const table = document.getElementById(tableId);
+    if (!table) {
+        return;
+    }
+
+    const rows = table.rows;
+    if (!rows || rows.length <= 1) {
+        const emptyContainer = getPaginationContainer(table);
+        if (emptyContainer) {
+            emptyContainer.innerHTML = '';
+            emptyContainer.style.display = 'none';
+        }
+        return;
+    }
+
+    const pageSize = tablePageSizeSetting;
+    const dataRowCount = rows.length - 1;
+    const totalPages = Math.max(1, Math.ceil(dataRowCount / pageSize));
+    const state = tablePaginationState[tableId] || { page: 1 };
+    state.page = Math.min(totalPages, Math.max(1, state.page));
+    tablePaginationState[tableId] = state;
+
+    const updateRowsVisibility = function() {
+        const startDataIndex = (state.page - 1) * pageSize;
+        const endDataIndex = startDataIndex + pageSize;
+        for (let i = 0; i < rows.length; i++) {
+            if (i === 0) {
+                rows[i].style.display = '';
+                continue;
+            }
+            const dataIndex = i - 1;
+            rows[i].style.display = dataIndex >= startDataIndex && dataIndex < endDataIndex ? '' : 'none';
+        }
+    };
+
+    const container = getPaginationContainer(table);
+    if (!container) {
+        updateRowsVisibility();
+        return;
+    }
+
+    if (totalPages <= 1) {
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = '';
+        }
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+    container.innerHTML = '';
+
+    const createButton = function(label, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tablePageBtn';
+        button.textContent = label;
+        button.addEventListener('click', onClick);
+        return button;
+    };
+
+    const firstButton = createButton('第一页', function() {
+        state.page = 1;
+        applyPaginationToTable(tableId);
+    });
+    const previousButton = createButton('上一页', function() {
+        state.page = Math.max(1, state.page - 1);
+        applyPaginationToTable(tableId);
+    });
+    const nextButton = createButton('下一页', function() {
+        state.page = Math.min(totalPages, state.page + 1);
+        applyPaginationToTable(tableId);
+    });
+    const lastButton = createButton('最后一页', function() {
+        state.page = totalPages;
+        applyPaginationToTable(tableId);
+    });
+
+    const status = document.createElement('span');
+    status.className = 'tablePageStatus';
+
+    const pageStatusText1 = document.createTextNode('第 ');
+    
+    const pageInput = document.createElement('input');
+    pageInput.className = 'tablePageStatusInput';
+    pageInput.type = 'number';
+    pageInput.min = '1';
+    pageInput.max = String(totalPages);
+    pageInput.value = String(state.page);
+    pageInput.addEventListener('blur', function() {
+        const targetPage = normalizeTablePageSize(pageInput.value);
+        if (!pageInput.value) {
+            pageInput.value = String(state.page);
+            return;
+        }
+        state.page = Math.min(totalPages, Math.max(1, targetPage));
+        applyPaginationToTable(tableId);
+    });
+    pageInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            pageInput.blur();
+        }
+    });
+
+    const pageStatusText2 = document.createTextNode(` / ${totalPages} 页`);
+    status.appendChild(pageStatusText1);
+    status.appendChild(pageInput);
+    status.appendChild(pageStatusText2);
+
+    firstButton.disabled = state.page <= 1;
+    previousButton.disabled = state.page <= 1;
+    nextButton.disabled = state.page >= totalPages;
+    lastButton.disabled = state.page >= totalPages;
+
+    container.appendChild(firstButton);
+    container.appendChild(previousButton);
+    container.appendChild(status);
+    container.appendChild(nextButton);
+    container.appendChild(lastButton);
+
+    updateRowsVisibility();
+}
+
+function renderCachedTable(tableId, resetToFirstPage = false) {
+    const cache = tableRenderCache[tableId];
+    if (!cache) {
+        return;
+    }
+
+    if (resetToFirstPage) {
+        tablePaginationState[tableId] = { page: 1 };
+    }
+
+    if (cache.isText) {
+        displayTextMatrix(cache.matrix, tableId, cache.width, true);
+    } else {
+        displayMatrix(cache.matrix, tableId, cache.width, true);
+    }
+
+    if (typeof cache.colorFn === 'function') {
+        cache.colorFn();
+    }
+}
+
+function refreshPageTablePagination(pageId) {
+    const pageElement = document.getElementById(pageId);
+    if (!pageElement) {
+        return;
+    }
+    pageElement.querySelectorAll('table[id]').forEach(function(table) {
+        if (tableRenderCache[table.id]) {
+            renderCachedTable(table.id, true);
+        }
+    });
+}
+
+function setTablePageSizeSetting(newSize) {
+    tablePageSizeSetting = normalizeTablePageSize(newSize);
+    Object.keys(tablePaginationState).forEach(function(tableId) {
+        tablePaginationState[tableId].page = 1;
+    });
+
+    const activePage = document.querySelector('#content .page.active');
+    if (activePage) {
+        refreshPageTablePagination(activePage.id);
+    }
+}
+
+window.refreshPageTablePagination = refreshPageTablePagination;
+window.setTablePageSizeSetting = setTablePageSizeSetting;
+
+loadTablePageSizeSetting();
+
 /* 接收网页传回的数据 */
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     const currentDate = new Date();
@@ -11,7 +359,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === 'sendWheelQuest') { // 命运转盘
         let allQuests = request.allQuests;
         console.log('收到任务数据：', allQuests);
-        document.getElementById('updateWheel').style.backgroundColor = getColorSetting('buttonSuccBgc');
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('wheel');
+        }
+        setButtonState('updateWheel', 'success');
         document.getElementById('flagWheel').textContent = 1;   // 设置成功标记
         var wheelType = {
             'shard387': '效率',
@@ -142,7 +493,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let eqInfo = request.eqInfo;
         console.log(timeStr, '全球任务分析:', eqInfo);   // 在控制台打出结果
         chrome.storage.local.set({ eqInfo: eqInfo });     // 保存数据
-        document.getElementById('updateEq').style.backgroundColor = getColorSetting('buttonSuccBgc');   // 将对应按钮变为绿色，表示提取成功
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('eventQuest');
+        }
+        setButtonState('updateEq', 'success');
         document.getElementById('flag4').textContent = 1;   // 设置成功标记
 
         const output = eqInfo.map(item => item + '<br>').join('');
@@ -209,6 +563,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let gemsPrice = request.gemsPrice;
         console.log(timeStr, '收到价格更新:', gemsPrice);
         chrome.storage.local.set({ gemsPrice: gemsPrice });
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('gems');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['gemsPriceMap'], function(result) {
             const gpMap = result.gemsPriceMap || {}; // 确保存在数据，防止为 undefined
@@ -222,6 +579,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ gemsPriceMap: gpMap });
         });
         document.getElementById('flag1').textContent = 1;
+        setButtonState('updateMarketPage', 'success');
         setTimeout(() => {
             displayPriceDaily();
             displayTables();
@@ -230,6 +588,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let tpNew = request.ticketPrice;
         let ticketPrice = request.ticketPrice;
         console.log(timeStr, '收到门票价格更新:', tpNew);
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('tickets');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['ticketPrice', 'ticketPriceMap'], function(result) {
             let tpOld = result.ticketPrice;
@@ -254,6 +615,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ ticketPriceMap: tpMap });
         });
         document.getElementById('flag2').textContent = 1;   // 设置成功标记
+        setButtonState('updateAtPrice', 'success');
         setTimeout(() => {
             displayPriceDaily();
             displayTables();
@@ -262,6 +624,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let equipStats = request.equipStats;
         console.log(timeStr, '收到装备加成：', equipStats);
         chrome.storage.local.set({ equipStats: equipStats });
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('equip');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['equipStatsMap'], function(result) {
             const equipStatsMap = result.equipStatsMap || {}; // 确保存在数据，防止为 undefined
@@ -274,6 +639,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ equipStatsMap: equipStatsMap });
         });
         document.getElementById('flagEquip').textContent = 1;   // 设置成功标记
+        setButtonState('updateEquipmentStats', 'success');
         setTimeout(() => {
             displayTables();
         }, 10);
@@ -281,6 +647,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let statistics = request.statistics;
         console.log(timeStr, '收到游戏数据更新：', statistics);
         chrome.storage.local.set({ statistics: statistics });
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('statistics');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['statisticsMap'], function(result) {
             const stMap = result.statisticsMap || {}; // 确保存在数据，防止为 undefined
@@ -294,6 +663,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ statisticsMap: stMap });
         });
         document.getElementById('flag5').textContent = 1;   // 设置成功标记
+        setButtonState('updateStatistic', 'success');
         setTimeout(() => {
             displayTables();
         }, 10);
@@ -301,6 +671,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let personalData = request.personalData;
         console.log(timeStr, '收到个人数据更新:', personalData);   // 在控制台打出结果
         chrome.storage.local.set({ personalData: personalData });     // 保存数据
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('personal');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['personalDataMap'], function(result) {
             const pdMap = result.personalDataMap || {}; // 确保存在数据，防止为 undefined
@@ -314,6 +687,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ personalDataMap: pdMap });
         });
         document.getElementById('flag3').textContent = 1;   // 设置成功标记
+        setButtonState('updatePersonalData', 'success');
         setTimeout(() => {
             displayTables();
         }, 10);
@@ -321,6 +695,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         let personalEco = request.personalEco;
         console.log(timeStr, '收到财产估值更新：', personalEco);   // 在控制台打出结果
         chrome.storage.local.set({ personalEco: personalEco });     // 保存数据
+        if (typeof window.closeRefreshTab === 'function') {
+            window.closeRefreshTab('economy');
+        }
         /* 按日期保存 */
         chrome.storage.local.get(['personalEcoMap'], function(result) {
             const peMap = result.personalEcoMap || {}; // 确保存在数据，防止为 undefined
@@ -334,6 +711,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ personalEcoMap: peMap });
         });
         document.getElementById('flagPe').textContent = 1;   // 设置成功标记
+        setButtonState('updateEconomy', 'success');
         setTimeout(() => {
             displayTables();
         }, 10);
@@ -341,6 +719,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+    initializeMainButtonStates();
     displayTables();
 });
 
@@ -439,14 +818,25 @@ function displayTables() {
             // displayMatrix(equip, 'table3-4');    // 显示装备加成
             // document.getElementById('tropNum').textContent = personalData[24][1];
             // document.getElementById('tropRank').textContent = personalData[24][3] || '暂无';
-            let tableTrophy = personalData.slice(24, 28);
-            tableTrophy[0][4] = '达成日期';
+
+            // === 奖杯：拆成摘要表 + 详情表 ===
+            const trophyGroups = [];  // 每组: { total, rank, date, fields, values, counts }
+            const firstGroup = personalData.slice(24, 28);
             let ipd = 0;
             const pdMap = result.personalDataMap;
             const pdDate = Object.keys(pdMap);
             pdDate.sort((a, b) => b.localeCompare(a)); // 降序排列
             let dnow = pdDate[0];
-            tableTrophy[0][5] = dnow.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+
+            trophyGroups.push({
+                total: firstGroup[0][1],
+                rank: firstGroup[0][3] || '',
+                date: dnow.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"),
+                fields: [...firstGroup[1]],
+                values: [...firstGroup[2]],
+                counts: [...firstGroup[3]]
+            });
+
             var tablePrDaily = [['日期', '黄', '红', '蓝', '紫', '缟', '海', '绿', '榴', '碧', '钻', 
                 '金', '铜', '银', '镍', '钢', '铁', '钯', '钛', '锌', '铂',
                 '金币', '功勋']];
@@ -454,18 +844,22 @@ function displayTables() {
                 if (pdMap[pdDate[i]][24]) {
                     if (pdMap[pdDate[i]][24][1] && (pdMap[pdDate[i]][24][1] < pdMap[dnow][24][1])) {
                         const trophyNew = pdMap[pdDate[i]].slice(24, 28);
-                        trophyNew[0][4] = '达成日期';
-                        trophyNew[0][5] = pdDate[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
-                        tableTrophy = [...tableTrophy, ...trophyNew];
+                        trophyGroups.push({
+                            total: trophyNew[0][1],
+                            rank: trophyNew[0][3] || '',
+                            date: pdDate[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"),
+                            fields: [...trophyNew[1]],
+                            values: [...trophyNew[2]],
+                            counts: [...trophyNew[3]]
+                        });
                         ipd++;
                         dnow = pdDate[i];
                     } else {
-                        tableTrophy[ipd*4][5] = pdDate[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+                        // 更新最后一组的日期（向前延伸）
+                        trophyGroups[trophyGroups.length - 1].date = pdDate[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
                         dnow = pdDate[i];
                     }
                 }
-                // if (!pdMap[pdDate[i]][18][6]) {pdMap[pdDate[i]][18][6] = 0;}
-                // pdMap[pdDate[i]][18][6] = String(pdMap[pdDate[i]][18][6]).replace(/\s+/g, '');
                 // 资源每日变化 借用奖杯的循环
                 if (i > 0) {
                     const pr1 = pdMap[pdDate[i-1]];
@@ -482,8 +876,61 @@ function displayTables() {
                     tablePrDaily.push(row);
                 }
             }
-            // chrome.storage.local.set({ personalDataMap: pdMap });
-            displayMatrix(tableTrophy, 'tableTrophy', 10);
+
+            // 渲染摘要表（日期、奖杯数、排名）
+            const summaryData = [['日期', '奖杯数', '排名']];
+            trophyGroups.forEach(g => {
+                summaryData.push([g.date, g.total, g.rank]);
+            });
+            displayMatrix(summaryData, 'tableTrophySummary');
+            applyPaginationToTable(document.getElementById('tableTrophySummary'));
+
+            // 当前选中的组索引
+            let trophyActiveGroupIndex = 0;
+
+            // 渲染详情表（默认显示第一组，即最新数据）
+            function renderTrophyDetail(groupIndex) {
+                trophyActiveGroupIndex = groupIndex;
+                const g = trophyGroups[groupIndex];
+                const detailData = [['指标', '达成', '奖杯数']];
+                for (let k = 0; k < g.fields.length; k++) {
+                    detailData.push([g.fields[k], g.values[k] || '', g.counts[k] || 0]);
+                }
+                displayMatrix(detailData, 'tableTrophyDetail');
+                // 更新摘要表高亮
+                updateTrophySummaryHighlight();
+            }
+
+            // 更新摘要表中选中行的高亮
+            function updateTrophySummaryHighlight() {
+                const summaryTable = document.getElementById('tableTrophySummary');
+                const rows = summaryTable.querySelectorAll('tr');
+                rows.forEach((r, i) => {
+                    if (i === 0) return;
+                    r.classList.toggle('trophy-row-active', (i - 1) === trophyActiveGroupIndex);
+                });
+            }
+
+            renderTrophyDetail(0);
+
+            // 注册高亮回调到缓存，确保分页/切页重建后自动恢复选中态
+            if (tableRenderCache['tableTrophySummary']) {
+                tableRenderCache['tableTrophySummary'].colorFn = function() {
+                    updateTrophySummaryHighlight();
+                };
+            }
+
+            // 用事件委托给摘要表绑定点击事件（兼容分页重建行）
+            const summaryTable = document.getElementById('tableTrophySummary');
+            summaryTable.addEventListener('click', (e) => {
+                const tr = e.target.closest('tr');
+                if (!tr || tr.rowIndex === 0) return;
+                const idx = tr.rowIndex - 1;
+                if (idx >= 0 && idx < trophyGroups.length) {
+                    renderTrophyDetail(idx);
+                }
+            });
+
             displayMatrix(tablePrDaily, 'prDaily');
         } else {
             document.getElementById('noPrData').style.display = "block";
@@ -557,8 +1004,7 @@ function displayTables() {
         {
             var eventShop = [
                 ['兑换项目', '所需活动点', '期望估价/活动点'],
-                ['功勋点（换完美碎片）', 1, 0],
-                ['功勋点（换代币）', 1, 0],
+                ['功勋点', 1, 0],
                 ['宝石', 5, 0],
                 ['初级门票包', 50, 0],
                 ['中级门票包', 100, 0],
@@ -577,20 +1023,11 @@ function displayTables() {
                 ['95%传说装备', 15000, 0],
                 ['完美装备', 20000, 0]
             ];
-            eventShop[1][2] = '56.60';
-            var token2mc = 150000; // 代币每点估价
-            var tokenProb = [0.36, 0.3, 0.16, 0.085, 0.045, 0.025, 0.015, 0.01]; // 代币生成概率
-            var token2hp = 5000; // 5000功勋生成一次代币
-            var tokenAvg = 0; // 每次生成代币的平均点数
-            for (let i = 0; i < tokenProb.length; i++) {
-                tokenAvg += tokenProb[i] * (i + 1);
-            }
-            var hp2token2mc = tokenAvg * token2mc / token2hp;
-            eventShop[2][2] = hp2token2mc.toFixed(2);
+            eventShop[1][2] = '50.00';
             var ticketProb = [0.14, 0.12, 0.06, 0.12, 0.12, 0.16, 0.1, 0.1, 0.04, 0.04]; // 各种类门票概率
             // var tpProb = [[2, 3, 4], [4, 5, 6], [0.75, 0.2, 0.05]]; // 中级、高级门票包种类与概率
-            var tpmProb = [[1, 2, 3, 4], [0.56, 0.26, 0.12, 0.06]]; // 中高级门票包分开
-            var tphProb = [[2, 3, 4, 5], [0.47, 0.27, 0.16, 0.1]]
+            var tpmProb = [[1, 2, 3, 4], [0.54, 0.26, 0.13, 0.07]]; // 中高级门票包分开
+            var tphProb = [[2, 3, 4, 5], [0.46, 0.28, 0.16, 0.1]]
             var lowTp = 0; // 兑换初级门票包时每活动点的估价
             var midTp = 0; // 中级
             var highTp = 0; // 高级
@@ -607,19 +1044,19 @@ function displayTables() {
                     midTp += tpLevelAvg[tpmProb[0][i] - 1] * tpmProb[1][i];
                     highTp += tpLevelAvg[tphProb[0][i] - 1] * tphProb[1][i];
                 }
-                lowTp = lowTp / eventShop[4][1] * 5;
-                midTp = midTp / eventShop[5][1] * 5;
-                highTp = highTp / eventShop[6][1] * 5;
-                eventShop[4][2] = lowTp.toFixed(2);
-                eventShop[5][2] = midTp.toFixed(2);
-                eventShop[6][2] = highTp.toFixed(2);
+                lowTp = lowTp / eventShop[3][1] * 5;
+                midTp = midTp / eventShop[4][1] * 5;
+                highTp = highTp / eventShop[5][1] * 5;
+                eventShop[3][2] = lowTp.toFixed(2);
+                eventShop[4][2] = midTp.toFixed(2);
+                eventShop[5][2] = highTp.toFixed(2);
             }
             var uniqueEquipDis = [0, 0, 0, 0, 0, 0];
             var legendEquipDis = [0, 0, 0, 0, 0, 0];
             var perfectEquipDis = 0;
             if (result.gemsPrice) {
-                var maxGp = Math.max(...gemsPrice[1]) / eventShop[3][1]; // 宝石价格取最贵的
-                eventShop[3][2] = maxGp.toFixed(2);
+                var maxGp = Math.max(...gemsPrice[1]) / eventShop[2][1]; // 宝石价格取最贵的
+                eventShop[2][2] = maxGp.toFixed(2);
                 var partsNum = [
                     ['40%', '45%', '50%', '55%', '60%', '65%'],
                     [5, 7, 10, 15, 20, 28], // 史诗装备拆解的传说碎片数
@@ -627,28 +1064,26 @@ function displayTables() {
                     [5, 8, 13, 18, 36, 60] // 传说装备拆解的完美碎片数
                 ]
                 for (let i = 0; i < 6; i++) {
-                    uniqueEquipDis[i] = gemsPrice[5][2] * partsNum[1][i] / eventShop[i + 7][1];
-                    legendEquipDis[i] = gemsPrice[5][3] * partsNum[3][i] / eventShop[i + 13][1];
-                    eventShop[i + 7][2] = uniqueEquipDis[i].toFixed(2);
-                    eventShop[i + 13][2] = legendEquipDis[i].toFixed(2);
+                    uniqueEquipDis[i] = gemsPrice[5][2] * partsNum[1][i] / eventShop[i + 6][1];
+                    legendEquipDis[i] = gemsPrice[5][3] * partsNum[3][i] / eventShop[i + 12][1];
+                    eventShop[i + 6][2] = uniqueEquipDis[i].toFixed(2);
+                    eventShop[i + 12][2] = legendEquipDis[i].toFixed(2);
                 }
-                perfectEquipDis = gemsPrice[5][3] * 100 / eventShop[19][1]; // 完美装备按100个完美碎片算
-                eventShop[19][2] = perfectEquipDis.toFixed(2);
+                perfectEquipDis = gemsPrice[5][3] * 100 / eventShop[18][1]; // 完美装备按100个完美碎片算
+                eventShop[18][2] = perfectEquipDis.toFixed(2);
             }
             displayMatrix(eventShop, 'tableEventShop');
             var tableEs = document.getElementById('tableEventShop');
-            for (let i = 0; i < 2; i++) {
-                tableEs.rows[i + 1].cells[0].style.backgroundColor = "#EAC476"; // 功勋标题颜色
-            }
-            tableEs.rows[3].cells[0].style.backgroundColor = "#B2D6B2"; // 宝石标题颜色
+            tableEs.rows[1].cells[0].style.backgroundColor = "#EAC476"; // 功勋标题颜色
+            tableEs.rows[2].cells[0].style.backgroundColor = "#B2D6B2"; // 宝石标题颜色
             for (let i = 0; i < 3; i++) {
-                tableEs.rows[i + 4].cells[0].style.backgroundColor = "#A5CBE3"; // 门票包标题颜色
+                tableEs.rows[i + 3].cells[0].style.backgroundColor = "#A5CBE3"; // 门票包标题颜色
             }
             for (let i = 0; i < 6; i++) {
-                tableEs.rows[i + 7].cells[0].style.backgroundColor = "#D689ED";  // 史诗装备标题颜色
-                tableEs.rows[i + 13].cells[0].style.backgroundColor = "#FFA26C"; // 传说装备标题颜色
+                tableEs.rows[i + 6].cells[0].style.backgroundColor = "#D689ED";  // 史诗装备标题颜色
+                tableEs.rows[i + 12].cells[0].style.backgroundColor = "#FFA26C"; // 传说装备标题颜色
             }
-            tableEs.rows[19].cells[0].style.backgroundColor = "#C83C3C"; // 完美装备标题颜色
+            tableEs.rows[18].cells[0].style.backgroundColor = "#C83C3C"; // 完美装备标题颜色
             var rates = eventShop.slice(1).map(row => row[row.length - 1]);
             var levelColor = setLevelColor(rates, 1, 2); // 根据价值设置背景色
             for (let i = 1; i < eventShop.length; i++) {
@@ -1025,50 +1460,46 @@ function displayTables() {
             displayMatrix(arenaTimeRate, 'tableArenaTimeRate');
             var levelColorAr = setLevelColor(ratesAv, 1, 3);
             var levelColorAtr = setLevelColor(ratesAt, 1, 3, 100, 0);
-            const tableAv = document.getElementById('tableArenaValue');
-            const tableAr = document.getElementById('tableArenaRate');
-            const tableAtr = document.getElementById('tableArenaTimeRate');
-            var vw = window.innerWidth; // 视口宽度
-            var cellFontSize = Math.max(10, 0.0069 * vw); // 字体大小随视口改变，不得小于10px
-            tableAv.style.fontSize = cellFontSize + 'px';
-            tableAr.style.fontSize = cellFontSize + 'px';
-            tableAtr.style.fontSize = cellFontSize + 'px';
             const atv1BestBgc = getColorSetting('atv1BestBgc');
             const atv1MidBgc = getColorSetting('atv1MidBgc');
             const atv1WorstBgc = getColorSetting('atv1WorstBgc');
-            for (let t = 0; t < tm; t++) {
-                for (let l = 0; l < lm; l++) {
-                    /* 比较大小 设置颜色 */
-                    if (arenaRate[2 * t + 1][l + 1] > arenaRate[2 * t + 2][l + 1]) { // 打精英不如打普通
-                        // tableAv.rows[2 * t + 1].cells[2 * l + 3].style.backgroundColor = "#b3eb9d"; // 最赚
-                        tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1BestBgc; // 最赚
-                        // tableAv.rows[2 * t + 2].cells[2 * l + 3].style.backgroundColor = "#ddf196"; // 比卖掉赚
-                        tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1MidBgc; // 比卖掉赚
-                    // } else if (xType[t] * coef[2] * elite[l] * hp2mc > ticketPrice[t + 1][l + 1]) { // 升精英的花费不如买个新的
-                    //     tableAv.rows[2 * t + 1].cells[2 * l + 3].style.backgroundColor = "#b3eb9d"; // 最赚
-                    //     tableAv.rows[2 * t + 1].cells[2 * l + 2].style.backgroundColor = "#b3eb9d"; // 最赚
-                    //     tableAv.rows[2 * t + 2].cells[2 * l + 3].style.backgroundColor = "#ddf196"; // 比卖掉赚
-                    //     tableAv.rows[2 * t + 2].cells[2 * l + 2].style.backgroundColor = "#ddf196"; // 比卖掉赚
-                    } else {
-                        // tableAv.rows[2 * t + 2].cells[2 * l + 3].style.backgroundColor = "#b3eb9d"; // 最赚
-                        tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1BestBgc; // 最赚
-                        // tableAv.rows[2 * t + 1].cells[2 * l + 3].style.backgroundColor = "#ddf196"; // 比卖掉赚
-                        tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1MidBgc; // 比卖掉赚
-                    }
-                    tableAr.rows[2 * t + 1].cells[l + 1].style.backgroundColor = levelColorAr[2 * t * lm + 2 * l]; // 色阶
-                    tableAr.rows[2 * t + 2].cells[l + 1].style.backgroundColor = levelColorAr[2 * t * lm + 2 * l + 1]; // 色阶
-                    tableAtr.rows[2 * t + 1].cells[l + 1].style.backgroundColor = levelColorAtr[2 * t * lm + 2 * l]; // 色阶
-                    tableAtr.rows[2 * t + 2].cells[l + 1].style.backgroundColor = levelColorAtr[2 * t * lm + 2 * l + 1]; // 色阶
-                    if (arenaRate[2 * t + 1][l + 1] <= 1) {
-                        // tableAv.rows[2 * t + 1].cells[2 * l + 3].style.backgroundColor = "#e4c79a"; // 卖掉赚
-                        tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1WorstBgc; // 卖掉赚
-                    }
-                    if (arenaRate[2 * t + 2][l + 1] <= 1) {
-                        // tableAv.rows[2 * t + 2].cells[2 * l + 3].style.backgroundColor = "#e4c79a"; // 卖掉赚
-                        tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1WorstBgc; // 卖掉赚
+            const arenaColorFn = function() {
+                const tableAv = document.getElementById('tableArenaValue');
+                const tableAr = document.getElementById('tableArenaRate');
+                const tableAtr = document.getElementById('tableArenaTimeRate');
+                if (!tableAv || !tableAr || !tableAtr) {
+                    return;
+                }
+
+                for (let t = 0; t < tm; t++) {
+                    for (let l = 0; l < lm; l++) {
+                        if (arenaRate[2 * t + 1][l + 1] > arenaRate[2 * t + 2][l + 1]) {
+                            tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1BestBgc;
+                            tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1MidBgc;
+                        } else {
+                            tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1BestBgc;
+                            tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1MidBgc;
+                        }
+
+                        tableAr.rows[2 * t + 1].cells[l + 1].style.backgroundColor = levelColorAr[2 * t * lm + 2 * l];
+                        tableAr.rows[2 * t + 2].cells[l + 1].style.backgroundColor = levelColorAr[2 * t * lm + 2 * l + 1];
+                        tableAtr.rows[2 * t + 1].cells[l + 1].style.backgroundColor = levelColorAtr[2 * t * lm + 2 * l];
+                        tableAtr.rows[2 * t + 2].cells[l + 1].style.backgroundColor = levelColorAtr[2 * t * lm + 2 * l + 1];
+
+                        if (arenaRate[2 * t + 1][l + 1] <= 1) {
+                            tableAv.rows[2 * t + 1].cells[l + 1].style.backgroundColor = atv1WorstBgc;
+                        }
+                        if (arenaRate[2 * t + 2][l + 1] <= 1) {
+                            tableAv.rows[2 * t + 2].cells[l + 1].style.backgroundColor = atv1WorstBgc;
+                        }
                     }
                 }
-            }
+            };
+
+            arenaColorFn();
+            if (tableRenderCache['tableArenaValue']) tableRenderCache['tableArenaValue'].colorFn = arenaColorFn;
+            if (tableRenderCache['tableArenaRate']) tableRenderCache['tableArenaRate'].colorFn = arenaColorFn;
+            if (tableRenderCache['tableArenaTimeRate']) tableRenderCache['tableArenaTimeRate'].colorFn = arenaColorFn;
         }
         /* BVPB */
         // displayBVPB();
@@ -1162,16 +1593,34 @@ function displayBVPB() {
                     desc = 0;
                 }
                 var colorArray = setLevelColor(valueArray, desc, 3, Infinity, -Infinity, 0);
-                for (let i = 0; i < itemNum; i++) {
-                    const cell = pbt.rows[(indexArray[i] / 10 | 0) - bvRange[level][0] + 1].cells[indexArray[i] % 10 + 1];
-                    cell.style.backgroundColor = colorArray[i];
-                    if (type != 0 && type != 7) {
-                        cell.style.cursor = 'pointer';
-                        cell.onclick = function() {
-                            window.open('https://minesweeper.online/cn/game/' + pbOfBV[level][indexArray[i]][+type + 1]);
+                const bvpbColorFn = function() {
+                    const tbl = document.getElementById('pbOfBVTable');
+                    if (!tbl) {
+                        return;
+                    }
+
+                    for (let i = 0; i < itemNum; i++) {
+                        const rowIdx = (indexArray[i] / 10 | 0) - bvRange[level][0] + 1;
+                        const colIdx = indexArray[i] % 10 + 1;
+                        const row = tbl.rows[rowIdx];
+                        if (!row || !row.cells[colIdx]) {
+                            continue;
+                        }
+
+                        const cell = row.cells[colIdx];
+                        cell.style.backgroundColor = colorArray[i];
+                        if (type != 0 && type != 7) {
+                            const gameId = pbOfBV[level][indexArray[i]][+type + 1];
+                            cell.style.cursor = 'pointer';
+                            cell.onclick = function() {
+                                window.open('https://minesweeper.online/cn/game/' + gameId);
+                            };
                         }
                     }
-                }
+                };
+
+                bvpbColorFn();
+                if (tableRenderCache['pbOfBVTable']) tableRenderCache['pbOfBVTable'].colorFn = bvpbColorFn;
             } else {
                 document.getElementById("noPbOfBV").style.display = 'block';
                 pbt.innerHTML = '';
@@ -1183,191 +1632,174 @@ function displayBVPB() {
     });
 }
 /* BVPB PK用 */
-function displayBVPBNew() {
-    // 初级1 中级2 高级3
-    const level = document.getElementById("pbOfBVLevel").textContent;
-    // 局数0 时间1 bvs3 效率5
-    const typeIni = document.getElementById("pbOfBVType").textContent;
-    // // 0全部 1盲扫
-    const isNf = document.getElementById("pbOfBVIsNf").textContent;
-    var type = +typeIni + isNf * 7;
-    const pbt1 = document.getElementById("pbOfBVTableNew");
-    chrome.storage.local.get(['pbOfBVNew', 'personalData'], function(result) {
-        if (result.pbOfBVNew) {
-            let pbOfBV = result.pbOfBVNew.pbOfBV;
-            if (pbOfBV[level]) {
-                document.getElementById("noPbOfBV").style.display = 'none';
-                var pbOfBVTable = [['', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']];
-                var bvRange = [[], [0, 6], [2, 13], [9, 26]];
-                for (let i = 0; i + bvRange[level][0] < bvRange[level][1]; i++) {
-                    pbOfBVTable[i + 1] = [(i + bvRange[level][0]) * 10 + '+', '', '', '', '', '', '', '', '', '', ''];
-                }
-                // var valueArray = [];
-                var indexArray = [];
-                var itemNum = 0;
-                for (let bv in pbOfBV[level]) {
-                    if (bv < bvRange[level][0]) {
-                        continue;
-                    }
-                    if ((bv / 10 | 0) - bvRange[level][0] + 1 >= pbOfBVTable.length) {
-                        for (; (bv / 10 | 0) - bvRange[level][0] + 1 >= pbOfBVTable.length; ) {
-                            pbOfBVTable[pbOfBVTable.length] = [(pbOfBVTable.length + bvRange[level][0] - 1) * 10 + '+', '', '', '', '', '', '', '', '', '', ''];
-                        }
-                    }
-                    if (isNf == 0) {
-                        if (type == 0 || type == 3) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
-                            // valueArray[itemNum] = pbOfBV[level][bv][type];
-                        } else if (type == 1) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = (+pbOfBV[level][bv][type]).toFixed(2);
-                            // valueArray[itemNum] = pbOfBV[level][bv][type];
-                        } else if (type == 5) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
-                            // valueArray[itemNum] = pbOfBV[level][bv][type].replace('%', '');
-                        }
-                        indexArray[itemNum] = bv;
-                        itemNum++;
-                    } else if (pbOfBV[level][bv][7]) {
-                        if (type == 7 || type == 10) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
-                            // valueArray[itemNum] = pbOfBV[level][bv][type];
-                        } else if (type == 8) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = (+pbOfBV[level][bv][type]).toFixed(2);
-                            // valueArray[itemNum] = pbOfBV[level][bv][type];
-                        } else if (type == 12) {
-                            pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
-                            // valueArray[itemNum] = pbOfBV[level][bv][type].replace('%', '');
-                        }
-                        indexArray[itemNum] = bv;
-                        itemNum++;
-                    }
-                }
-                displayMatrix(pbOfBVTable, 'pbOfBVTableNew');
-                // var desc = 1;
-                // if (type == 1 || type == 8) {
-                //     desc = 0;
-                // }
-                // var colorArray = setLevelColor(valueArray, desc, 3, Infinity, -Infinity, 0);
-                for (let i = 0; i < itemNum; i++) {
-                    const cell = pbt1.rows[(indexArray[i] / 10 | 0) - bvRange[level][0] + 1].cells[indexArray[i] % 10 + 1];
-                    // cell.style.backgroundColor = colorArray[i];
-                    if (type != 0 && type != 7) {
-                        cell.style.cursor = 'pointer';
-                        cell.onclick = function() {
-                            window.open('https://minesweeper.online/cn/game/' + pbOfBV[level][indexArray[i]][+type + 1]);
-                        }
-                    }
-                }
-                /* 左右两个表对比上色，计分 */
-                var score0 = 0;
-                var score1 = 0;
-                var solo0 = 0;
-                var solo1 = 0;
-                var pkResult = [
-                    ['', '', ''],
-                    ['分数', '', ''],
-                    ['独占BV', '', '']
-                ];
-                const winColor = getColorSetting('bvpkWin');
-                const loseColor = getColorSetting('bvpkLose');
-                const drawColor = getColorSetting('bvpkDraw');
-                const soloColor = getColorSetting('bvpkSolo');
-                const pbt0 = document.getElementById("pbOfBVTable");
-                var rn = Math.max(pbt0.rows.length, pbt1.rows.length);
-                for (let i = 1; i < rn; i++) {
-                    for (let j = 1; j <= 10; j++) {
-                        var cell0 = null;
-                        var cell1 = null;
-                        if (pbt0.rows[i]) {
-                            cell0 = pbt0.rows[i].cells[j];
-                        }
-                        if (pbt1.rows[i]) {
-                            cell1 = pbt1.rows[i].cells[j];
-                        }
-                        if (cell0 && cell0.textContent) {
-                            if (cell1 && cell1.textContent) {
-                                var num0 = 0;
-                                var num1 = 0;
-                                if (type == 5 || type == 12) {
-                                    num0 = Number(cell0.textContent.replace('%', ''));
-                                    num1 = Number(cell1.textContent.replace('%', ''));
-                                } else if (type == 1 || type == 8) {
-                                    num0 = -1 * Number(cell0.textContent);
-                                    num1 = -1 * Number(cell1.textContent);
-                                } else {
-                                    num0 = Number(cell0.textContent);
-                                    num1 = Number(cell1.textContent);
-                                }
-                                if (num0 > num1) {
-                                    score0 += 1;
-                                    cell0.style.backgroundColor = winColor;
-                                    cell1.style.backgroundColor = loseColor;
-                                } else if (num0 < num1) {
-                                    score1 += 1;
-                                    cell1.style.backgroundColor = winColor;
-                                    cell0.style.backgroundColor = loseColor;
-                                } else {
-                                    score0 += 0.5;
-                                    score1 += 0.5;
-                                    cell1.style.backgroundColor = drawColor;
-                                    cell0.style.backgroundColor = drawColor;
-                                }
-                            } else {
-                                score0 += 0.25;
-                                solo0++;
-                                cell0.style.backgroundColor = soloColor;
-                            }
-                        } else if (cell1 && cell1.textContent) {
-                            score1 += 0.25;
-                            solo1++;
-                            cell1.style.backgroundColor = soloColor;
-                        }
-                    }
-                }
-                if (result.personalData && result.personalData[29]) {
-                    pkResult[0][1] = result.personalData[29][0];
-                } else {
-                    window.alert('请先在“个人数据”页“刷新个人数据”提取昵称');
-                }
-                pkResult[0][2] = result.pbOfBVNew.userName;
-                pkResult[1][1] = score0;
-                pkResult[1][2] = score1;
-                pkResult[2][1] = solo0;
-                pkResult[2][2] = solo1;
-                displayMatrix(pkResult, 'pkResult');
-                pbt1.style.width = 'auto';
-                document.getElementById('pkRule').style.display = 'inline';
-            } else {
-                document.getElementById("noPbOfBV").style.display = 'block';
-                pbt1.innerHTML = '';
-            }
-        } else {
-            document.getElementById("noPbOfBV").style.display = 'block';
-            pbt1.innerHTML = '';
-        }
-    });
-}
+// function displayBVPBNew() {
+//     // 初级1 中级2 高级3
+//     const level = document.getElementById("pbOfBVLevel").textContent;
+//     // 局数0 时间1 bvs3 效率5
+//     const typeIni = document.getElementById("pbOfBVType").textContent;
+//     // // 0全部 1盲扫
+//     const isNf = document.getElementById("pbOfBVIsNf").textContent;
+//     var type = +typeIni + isNf * 7;
+//     const pbt1 = document.getElementById("pbOfBVTableNew");
+//     chrome.storage.local.get(['pbOfBVNew', 'personalData'], function(result) {
+//         if (result.pbOfBVNew) {
+//             let pbOfBV = result.pbOfBVNew.pbOfBV;
+//             if (pbOfBV[level]) {
+//                 document.getElementById("noPbOfBV").style.display = 'none';
+//                 var pbOfBVTable = [['', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']];
+//                 var bvRange = [[], [0, 6], [2, 13], [9, 26]];
+//                 for (let i = 0; i + bvRange[level][0] < bvRange[level][1]; i++) {
+//                     pbOfBVTable[i + 1] = [(i + bvRange[level][0]) * 10 + '+', '', '', '', '', '', '', '', '', '', ''];
+//                 }
+//                 // var valueArray = [];
+//                 var indexArray = [];
+//                 var itemNum = 0;
+//                 for (let bv in pbOfBV[level]) {
+//                     if (bv < bvRange[level][0]) {
+//                         continue;
+//                     }
+//                     if ((bv / 10 | 0) - bvRange[level][0] + 1 >= pbOfBVTable.length) {
+//                         for (; (bv / 10 | 0) - bvRange[level][0] + 1 >= pbOfBVTable.length; ) {
+//                             pbOfBVTable[pbOfBVTable.length] = [(pbOfBVTable.length + bvRange[level][0] - 1) * 10 + '+', '', '', '', '', '', '', '', '', '', ''];
+//                         }
+//                     }
+//                     if (isNf == 0) {
+//                         if (type == 0 || type == 3) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type];
+//                         } else if (type == 1) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = (+pbOfBV[level][bv][type]).toFixed(2);
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type];
+//                         } else if (type == 5) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type].replace('%', '');
+//                         }
+//                         indexArray[itemNum] = bv;
+//                         itemNum++;
+//                     } else if (pbOfBV[level][bv][7]) {
+//                         if (type == 7 || type == 10) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type];
+//                         } else if (type == 8) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = (+pbOfBV[level][bv][type]).toFixed(2);
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type];
+//                         } else if (type == 12) {
+//                             pbOfBVTable[(bv / 10 | 0) - bvRange[level][0] + 1][bv % 10 + 1] = pbOfBV[level][bv][type];
+//                             // valueArray[itemNum] = pbOfBV[level][bv][type].replace('%', '');
+//                         }
+//                         indexArray[itemNum] = bv;
+//                         itemNum++;
+//                     }
+//                 }
+//                 displayMatrix(pbOfBVTable, 'pbOfBVTableNew');
+//                 // var desc = 1;
+//                 // if (type == 1 || type == 8) {
+//                 //     desc = 0;
+//                 // }
+//                 // var colorArray = setLevelColor(valueArray, desc, 3, Infinity, -Infinity, 0);
+//                 for (let i = 0; i < itemNum; i++) {
+//                     const cell = pbt1.rows[(indexArray[i] / 10 | 0) - bvRange[level][0] + 1].cells[indexArray[i] % 10 + 1];
+//                     // cell.style.backgroundColor = colorArray[i];
+//                     if (type != 0 && type != 7) {
+//                         cell.style.cursor = 'pointer';
+//                         cell.onclick = function() {
+//                             window.open('https://minesweeper.online/cn/game/' + pbOfBV[level][indexArray[i]][+type + 1]);
+//                         }
+//                     }
+//                 }
+//                 /* 左右两个表对比上色，计分 */
+//                 var score0 = 0;
+//                 var score1 = 0;
+//                 var solo0 = 0;
+//                 var solo1 = 0;
+//                 var pkResult = [
+//                     ['', '', ''],
+//                     ['分数', '', ''],
+//                     ['独占BV', '', '']
+//                 ];
+//                 const winColor = getColorSetting('bvpkWin');
+//                 const loseColor = getColorSetting('bvpkLose');
+//                 const drawColor = getColorSetting('bvpkDraw');
+//                 const soloColor = getColorSetting('bvpkSolo');
+//                 const pbt0 = document.getElementById("pbOfBVTable");
+//                 var rn = Math.max(pbt0.rows.length, pbt1.rows.length);
+//                 for (let i = 1; i < rn; i++) {
+//                     for (let j = 1; j <= 10; j++) {
+//                         var cell0 = null;
+//                         var cell1 = null;
+//                         if (pbt0.rows[i]) {
+//                             cell0 = pbt0.rows[i].cells[j];
+//                         }
+//                         if (pbt1.rows[i]) {
+//                             cell1 = pbt1.rows[i].cells[j];
+//                         }
+//                         if (cell0 && cell0.textContent) {
+//                             if (cell1 && cell1.textContent) {
+//                                 var num0 = 0;
+//                                 var num1 = 0;
+//                                 if (type == 5 || type == 12) {
+//                                     num0 = Number(cell0.textContent.replace('%', ''));
+//                                     num1 = Number(cell1.textContent.replace('%', ''));
+//                                 } else if (type == 1 || type == 8) {
+//                                     num0 = -1 * Number(cell0.textContent);
+//                                     num1 = -1 * Number(cell1.textContent);
+//                                 } else {
+//                                     num0 = Number(cell0.textContent);
+//                                     num1 = Number(cell1.textContent);
+//                                 }
+//                                 if (num0 > num1) {
+//                                     score0 += 1;
+//                                     cell0.style.backgroundColor = winColor;
+//                                     cell1.style.backgroundColor = loseColor;
+//                                 } else if (num0 < num1) {
+//                                     score1 += 1;
+//                                     cell1.style.backgroundColor = winColor;
+//                                     cell0.style.backgroundColor = loseColor;
+//                                 } else {
+//                                     score0 += 0.5;
+//                                     score1 += 0.5;
+//                                     cell1.style.backgroundColor = drawColor;
+//                                     cell0.style.backgroundColor = drawColor;
+//                                 }
+//                             } else {
+//                                 score0 += 0.25;
+//                                 solo0++;
+//                                 cell0.style.backgroundColor = soloColor;
+//                             }
+//                         } else if (cell1 && cell1.textContent) {
+//                             score1 += 0.25;
+//                             solo1++;
+//                             cell1.style.backgroundColor = soloColor;
+//                         }
+//                     }
+//                 }
+//                 if (result.personalData && result.personalData[29]) {
+//                     pkResult[0][1] = result.personalData[29][0];
+//                 } else {
+//                     window.alert('请先在“个人数据”页“刷新个人数据”提取昵称');
+//                 }
+//                 pkResult[0][2] = result.pbOfBVNew.userName;
+//                 pkResult[1][1] = score0;
+//                 pkResult[1][2] = score1;
+//                 pkResult[2][1] = solo0;
+//                 pkResult[2][2] = solo1;
+//                 displayMatrix(pkResult, 'pkResult');
+//                 pbt1.style.width = 'auto';
+//                 document.getElementById('pkRule').style.display = 'inline';
+//             } else {
+//                 document.getElementById("noPbOfBV").style.display = 'block';
+//                 pbt1.innerHTML = '';
+//             }
+//         } else {
+//             document.getElementById("noPbOfBV").style.display = 'block';
+//             pbt1.innerHTML = '';
+//         }
+//     });
+// }
 
 /* 显示历史价格变化 */
 function displayPriceDaily() {
-    var pdCategory = ['宝石', '竞技场币', 
-        '速度门票', '速度NG门票', '盲扫门票', '效率门票', '高难度门票', '随机难度门票', '硬核门票', '硬核NG门票', '耐力门票', '噩梦门票', 
-        'L1门票', 'L2门票', 'L3门票', 'L4门票', 'L5门票', 'L6门票', 'L7门票', 'L8门票', '装备碎片'];
     const pdc = document.getElementById("priceDailySelect").value;
-    const esd = document.getElementById("editSelectDiv");
-    const eg = document.getElementById("editGems");
-    const eac = document.getElementById("editAcs");
-    const eat = document.getElementById("editAt");
-    const eal = document.getElementById("editAl");
-    const ept = document.getElementById("editParts");
-    const confirm = document.getElementById("confirmEdit");
-    esd.style.display = 'none';
-    eg.style.display = 'none';
-    eac.style.display = 'none';
-    eat.style.display = 'none';
-    eal.style.display = 'none';
-    ept.style.display = 'none';
-    confirm.style.display = 'none';
     chrome.storage.local.get(['gemsPriceMap', 'ticketPriceMap'], function (result) {
         const gpMap = result.gemsPriceMap || {};
         const tpMap = result.ticketPriceMap || {};
@@ -1376,49 +1808,28 @@ function displayPriceDaily() {
             document.getElementById("priceDailyTable").innerHTML = '';
         } else if (pdc == 1) {
             if (gpMap) {
-                esd.style.display = 'inline-block';
-                eg.style.display = 'inline-block';
-                eac.style.display = 'none';
-                eat.style.display = 'none';
-                eal.style.display = 'none';
-                ept.style.display = 'none';
-                confirm.style.display = 'inline-block';
                 document.getElementById('noPriceDaily').style.display = 'none';
                 const title = ['黄玉', '红宝石', '蓝宝石', '紫水晶', '缟玛瑙', '海蓝宝石', '祖母绿', '石榴石', '碧玉', '钻石'];
                 for (const date in gpMap) {
                     dataMap[date] = gpMap[date][1];
                 }
-                priceDailyOutput(dataMap, title, 'priceDailyTable', eg.value);
+                priceDailyOutput(dataMap, title, 'priceDailyTable', pdc);
             } else {
                 document.getElementById('noPriceDaily').style.display = 'block';
             }
         } else if (pdc == 2) {
             if (gpMap) {
-                esd.style.display = 'inline-block';
-                eg.style.display = 'none';
-                eac.style.display = 'inline-block';
-                eat.style.display = 'none';
-                eal.style.display = 'none';
-                ept.style.display = 'none';
-                confirm.style.display = 'inline-block';
                 document.getElementById('noPriceDaily').style.display = 'none';
                 const title = ['金竞技场币', '铜竞技场币', '银竞技场币', '镍竞技场币', '钢竞技场币', '铁竞技场币', '钯竞技场币', '钛竞技场币', '锌竞技场币', '铂竞技场币'];
                 for (const date in gpMap) {
                     dataMap[date] = gpMap[date][3];
                 }
-                priceDailyOutput(dataMap, title, 'priceDailyTable', eac.value);
+                priceDailyOutput(dataMap, title, 'priceDailyTable', pdc);
             } else {
                 document.getElementById('noPriceDaily').style.display = 'block';
             }
         } else if (pdc < 13) {
             if (tpMap) {
-                esd.style.display = 'inline-block';
-                eg.style.display = 'none';
-                eac.style.display = 'none';
-                eat.style.display = 'none';
-                eal.style.display = 'inline-block';
-                ept.style.display = 'none';
-                confirm.style.display = 'inline-block';
                 document.getElementById('noPriceDaily').style.display = 'none';
                 const title = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
                 for (const date in tpMap) {
@@ -1430,19 +1841,12 @@ function displayPriceDaily() {
                         dataMap[date] = item;
                     }
                 }
-                priceDailyOutput(dataMap, title, 'priceDailyTable', eal.value);
+                priceDailyOutput(dataMap, title, 'priceDailyTable', pdc);
             } else {
                 document.getElementById('noPriceDaily').style.display = 'block';
             }
         } else if (pdc < 21) {
             if (tpMap) {
-                esd.style.display = 'inline-block';
-                eg.style.display = 'none';
-                eac.style.display = 'none';
-                eat.style.display = 'inline-block';
-                eal.style.display = 'none';
-                ept.style.display = 'none';
-                confirm.style.display = 'inline-block';
                 document.getElementById('noPriceDaily').style.display = 'none';
                 const title = ['速度', '速度NG', '盲扫', '效率', '高难度', '随机难度', '硬核', '硬核NG', '耐力', '噩梦'];
                 for (const date in tpMap) {
@@ -1454,61 +1858,143 @@ function displayPriceDaily() {
                         dataMap[date] = item;
                     }
                 }
-                priceDailyOutput(dataMap, title, 'priceDailyTable', eat.value);
+                priceDailyOutput(dataMap, title, 'priceDailyTable', pdc);
             } else {
                 document.getElementById('noPriceDaily').style.display = 'block';
             }
         } else if (pdc == 21) {
             if (gpMap) {
-                esd.style.display = 'inline-block';
-                eg.style.display = 'none';
-                eac.style.display = 'none';
-                eat.style.display = 'none';
-                eal.style.display = 'none';
-                ept.style.display = 'inline-block';
-                confirm.style.display = 'inline-block';
                 document.getElementById('noPriceDaily').style.display = 'none';
                 const title = ['稀有', '史诗', '传说', '完美T', '完美R', '完美S', '完美A', '完美O', '完美Q', '完美E', '完美G', '完美J', '完美D'];
                 for (const date in gpMap) {
                     dataMap[date] = gpMap[date][5].slice(0, 3).concat(gpMap[date][7]);
                 }
-                priceDailyOutput(dataMap, title, 'priceDailyTable', ept.value);
+                priceDailyOutput(dataMap, title, 'priceDailyTable', pdc);
             } else {
                 document.getElementById('noPriceDaily').style.display = 'block';
             }
         }
     });
 }
-function priceDailyOutput(dataMap, title, tableId, highlightRow = -1) {
-    const choosenDate = document.getElementById('editPriceDate').value;
-    var matchDate = -1;
+function priceDailyOutput(dataMap, title, tableId, pdc = 0) {
     const dates = Object.keys(dataMap);
     dates.sort((a, b) => Number(b) - Number(a));
     var dataOutput = [['日期', ...title]];
     var levelValue = Array.from({ length: title.length }, () => Array(dates.length).fill(0));
     for (let i = 0; i < dates.length; i++) {
-        var row = dataMap[dates[i]]
+        var row = [...dataMap[dates[i]]];
         for (let j = 0; j < title.length; j++) {
             levelValue[j][i] = row[j];
         }
-        row.unshift([dates[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")]);
-        if (row[0] == choosenDate) {
-            matchDate = i;
-        }
+        row.unshift(dates[i].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"));
         dataOutput.push(row);
     }
     displayMatrix(dataOutput, tableId);
     const outputTable = document.getElementById(tableId);
-    for (let j = 0; j < title.length; j++) {
-        const levelColor = setLevelColor(levelValue[j], 0, 3);
-        for (let i = 0; i < dates.length; i++) {
-            if (levelColor[i]) {
-                outputTable.rows[i + 1].cells[j + 1].style.backgroundColor = levelColor[i];
+    // Store original date key on each data row for inline editing
+    for (let i = 0; i < dates.length; i++) {
+        outputTable.rows[i + 1].dataset.dateKey = dates[i];
+    }
+    // Apply color coding — wrap in colorFn so renderCachedTable can reapply after rebuild
+    const priceDailyColorFn = function () {
+        const tbl = document.getElementById(tableId);
+        if (!tbl) return;
+        for (let j = 0; j < title.length; j++) {
+            const levelColor = setLevelColor(levelValue[j], 0, 3);
+            for (let i = 0; i < dates.length; i++) {
+                if (levelColor[i] && tbl.rows[i + 1] && tbl.rows[i + 1].cells[j + 1]) {
+                    tbl.rows[i + 1].cells[j + 1].style.backgroundColor = levelColor[i];
+                }
             }
         }
-    }
-    if (matchDate >= 0 && highlightRow >= 0) {
-        outputTable.rows[+matchDate + 1].cells[+highlightRow + 1].classList.add('highlight');
+    };
+    priceDailyColorFn();
+    if (tableRenderCache[tableId]) tableRenderCache[tableId].colorFn = priceDailyColorFn;
+    // Update current pdc for inline editing (called every render)
+    outputTable.dataset.pdc = pdc;
+    // Bind double-click inline editing once per table element
+    if (!outputTable._pdEditBound) {
+        outputTable._pdEditBound = true;
+        outputTable.addEventListener('dblclick', function (e) {
+            const td = e.target.closest('td');
+            if (!td || td.cellIndex === 0) return; // skip date column
+            const tr = td.closest('tr');
+            if (!tr || !tr.dataset.dateKey) return; // skip header row
+            const currentPdc = parseInt(outputTable.dataset.pdc);
+            if (!currentPdc) return;
+            const dateKey = tr.dataset.dateKey;
+            const colIndex = td.cellIndex - 1;
+            const originalText = td.textContent.trim();
+            const bgColor = td.style.backgroundColor;
+            // Replace cell with input
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = originalText;
+            input.min = '0';
+            input.style.cssText = 'width:80px;padding:2px 4px;font-size:inherit;border:1px solid #4299e1;border-radius:4px;background:#fff;color:#333;';
+            td.textContent = '';
+            td.appendChild(input);
+            input.focus();
+            input.select();
+            let committed = false;
+            function saveEdit() {
+                if (committed) return;
+                committed = true;
+                const newVal = parseFloat(input.value);
+                if (isNaN(newVal) || newVal <= 0) {
+                    td.textContent = originalText;
+                    td.style.backgroundColor = bgColor;
+                    return;
+                }
+                chrome.storage.local.get(['gemsPriceMap', 'ticketPriceMap'], function (result) {
+                    const gpMap = result.gemsPriceMap || {};
+                    const tpMap = result.ticketPriceMap || {};
+                    try {
+                        if (currentPdc == 1) {
+                            gpMap[dateKey][1][colIndex] = +newVal;
+                            chrome.storage.local.set({ gemsPriceMap: gpMap }, () => displayPriceDaily());
+                        } else if (currentPdc == 2) {
+                            gpMap[dateKey][3][colIndex] = +newVal;
+                            chrome.storage.local.set({ gemsPriceMap: gpMap }, () => displayPriceDaily());
+                        } else if (currentPdc < 13) {
+                            tpMap[dateKey][currentPdc - 2][colIndex + 1] = +newVal;
+                            chrome.storage.local.set({ ticketPriceMap: tpMap }, () => displayPriceDaily());
+                        } else if (currentPdc < 21) {
+                            tpMap[dateKey][colIndex + 1][currentPdc - 12] = +newVal;
+                            chrome.storage.local.set({ ticketPriceMap: tpMap }, () => displayPriceDaily());
+                        } else if (currentPdc == 21) {
+                            if (colIndex < 3) {
+                                gpMap[dateKey][5][colIndex] = +newVal;
+                            } else {
+                                gpMap[dateKey][7][colIndex - 3] = +newVal;
+                            }
+                            chrome.storage.local.set({ gemsPriceMap: gpMap }, () => displayPriceDaily());
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        td.textContent = originalText;
+                        td.style.backgroundColor = bgColor;
+                    }
+                });
+            }
+            function cancelEdit() {
+                if (committed) return;
+                committed = true;
+                td.textContent = originalText;
+                td.style.backgroundColor = bgColor;
+            }
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    input.removeEventListener('blur', saveEdit);
+                    saveEdit();
+                } else if (ev.key === 'Escape') {
+                    input.removeEventListener('blur', saveEdit);
+                    cancelEdit();
+                }
+            });
+        });
     }
 }
 
@@ -1641,8 +2127,7 @@ function displayEventQuestTally() {
 }
 
 /* 处理矩阵并显示为表格 */
-function displayMatrix(matrix, tableId, width = 0) {
-    
+function displayMatrix(matrix, tableId, width = 0, skipCacheUpdate = false) {
     let rows = matrix.length;
     let cols = matrix[0].length;
     if (width) {
@@ -1650,6 +2135,18 @@ function displayMatrix(matrix, tableId, width = 0) {
     }
 
     const table = document.getElementById(tableId);    // 定位表格
+    if (!table) {
+        return;
+    }
+
+    if (!skipCacheUpdate) {
+        tableRenderCache[tableId] = {
+            matrix: cacheTableMatrix(matrix),
+            width: width,
+            isText: false
+        };
+    }
+
     table.innerHTML = ''; // 清空现有的表格内容
 
     /* 表格主体 */
@@ -1667,6 +2164,8 @@ function displayMatrix(matrix, tableId, width = 0) {
             }
         }
     }
+
+    applyPaginationToTable(tableId);
 }
 
 function num(number) {
@@ -1690,8 +2189,7 @@ function num(number) {
 }
 
 /* 显示纯文本 */
-function displayTextMatrix(matrix, tableId, width = 0) {
-    
+function displayTextMatrix(matrix, tableId, width = 0, skipCacheUpdate = false) {
     let rows = matrix.length;
     let cols = matrix[0].length;
     if (width) {
@@ -1699,6 +2197,18 @@ function displayTextMatrix(matrix, tableId, width = 0) {
     }
 
     const table = document.getElementById(tableId);    // 定位表格
+    if (!table) {
+        return;
+    }
+
+    if (!skipCacheUpdate) {
+        tableRenderCache[tableId] = {
+            matrix: cacheTableMatrix(matrix),
+            width: width,
+            isText: true
+        };
+    }
+
     table.innerHTML = ''; // 清空现有的表格内容
 
     /* 表格主体 */
@@ -1710,6 +2220,8 @@ function displayTextMatrix(matrix, tableId, width = 0) {
             cell.textContent = String(matrix?.[i]?.[j] ?? '');
         }
     }
+
+    applyPaginationToTable(tableId);
 }
 
 /* 根据值设置色阶 */

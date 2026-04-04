@@ -3,10 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const buttonFqAll = document.getElementById('buttonFqAll');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url.includes('https://minesweeper.online/') && tab1[0].url.includes('friend-quests')) {
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
-                button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button, 'loading');
                 const tabId = tab1[0].id;
                 // chrome.storage.local.get(['friendQuestInfo'], function(result) {
                 //     let fqInfo = result.friendQuestInfo;
@@ -99,10 +99,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             
-            buttonFqAll.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(buttonFqAll, 'ready');
             buttonFqAll.style.cursor = 'pointer'; // 鼠标指针样式
             buttonFqAll.addEventListener('click', function () {
-                buttonFqAll.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(buttonFqAll, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -323,8 +323,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
-            buttonFqAll.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
+            setPopupButtonState(buttonFqAll, 'disabled');
         }
     });
 });
@@ -381,11 +381,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ friendQuestDaily: fqDaily });
             console.log('友谊任务信息汇总:', fqInfoAll);   // 在控制台打出结果
         });
-        if (document.getElementById('buttonFq').style.backgroundColor === 'rgb(255, 159, 24)') {
-            document.getElementById('buttonFq').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        if (getPopupButtonState('buttonFq') === 'loading') {
+            setPopupButtonState('buttonFq', 'success');
         }
-        if (document.getElementById('buttonFqAll').style.backgroundColor == 'rgb(255, 159, 24)') {
-            document.getElementById('buttonFqAll').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        if (getPopupButtonState('buttonFqAll') === 'loading') {
+            setPopupButtonState('buttonFqAll', 'success');
         }
     }
 });

@@ -2,10 +2,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('buttonCheapEquip');
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url == 'https://minesweeper.online/cn/marketplace' || tab1[0].url == 'https://minesweeper.online/marketplace') {
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
-                button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                setPopupButtonState(button, 'loading');
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
         }
     });
 });
@@ -119,7 +119,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === 'sendEquipmentInfo') {
         let equipmentInfo = request.equipmentInfo;
         console.log('收到装备出售信息：', equipmentInfo);   // 在控制台打出结果
-        document.getElementById('buttonCheapEquip').style.backgroundColor = '#4caf50';   // 将对应按钮变为绿色，表示提取成功
+        setPopupButtonState('buttonCheapEquip', 'success');
 
         chrome.storage.local.get(['gemsPrice'], function(result) {
             // const perfectValue = result.perfectValue;

@@ -4,17 +4,17 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tab1) {
         if (tab1[0].url == 'https://minesweeper.online/cn/marketplace' || tab1[0].url == 'https://minesweeper.online/marketplace') {
             document.getElementById('monitorSet').style = 'block';
-            button.style.backgroundColor = '#6bc1f3';   // 对应按钮变为蓝色，表示可用
+            setPopupButtonState(button, 'ready');
             button.style.cursor = 'pointer'; // 鼠标指针样式
             button.addEventListener('click', function () {
                 var pt = document.getElementById('priceThreshold').value;
                 console.log(pt);
                 if (pt) {
                     document.getElementById('monitorNotice').style.display = 'none';
-                    button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
+                    setPopupButtonState(button, 'loading');
                     button.disabled = true; // 运行时不能再次点击
                     button.style.cursor = 'default'; // 鼠标指针样式
-                    buttonStop.style.backgroundColor = '#6bc1f3'; // 停止按钮变蓝，可用
+                    setPopupButtonState(buttonStop, 'ready'); // 停止按钮变蓝，可用
                     buttonStop.style.cursor = 'pointer'; // 鼠标指针样式
                     document.getElementById('flagMonitor').textContent = 0;
                     const tabId = tab1[0].id;
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     checkInterval = setInterval(() => {
                         var flag = document.getElementById('flagMonitor').textContent;
                         if (flag == 1) {
-                            button.style.backgroundColor = '#4caf50';
+                            setPopupButtonState(button, 'success');
                             button.disabled = false; // 恢复可点击
                             button.style.cursor = 'pointer'; // 鼠标指针样式
                             clearInterval(checkInterval);
@@ -76,8 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             buttonStop.addEventListener('click', function () {
                 document.getElementById('flagMonitor').textContent = 1;
-                // button.style.backgroundColor = '#6bc1f3';
-                buttonStop.style.backgroundColor = '#ff9f18';
+                setPopupButtonState(buttonStop, 'loading');
                 buttonStop.style.cursor = 'default'; // 鼠标指针样式
             });
             chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -88,7 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         } else {
-            button.style.backgroundColor = '#9b9b9b';   // 对应按钮变为灰色，表示不可用
+            setPopupButtonState(button, 'disabled');
+            setPopupButtonState(buttonStop, 'disabled');
         }
     });
 });
