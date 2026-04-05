@@ -731,12 +731,12 @@ function displayTables() {
     ]; // 使用装备页的装备加成情况，默认1x避免空值报错
     var lm = 8; // 最大等级
     var tm = 10; // 多少种竞技场
-    var hp2mc = 56.6; // 功勋点折算金币
+    var hp2mc = 50.0; // 功勋点折算金币
     var stDaily = [['日期', '总局数', '胜局数', '总耗时', '完成的任务', '完成的竞技场', '已解决3BV', '经验', '金币', '宝石', '竞技场门票', '活跃度', '活动物品', '竞技场币']];
     /* 读取数据 */
     chrome.storage.local.get(null, function(result) {
         if (result.configurableCoef) { // 读取功勋点设置
-            hp2mc = result.configurableCoef[12] || 56.6;
+            hp2mc = result.configurableCoef[12] || 50.0;
         }
         /* 宝石 */
         if (result.gemsPrice) {
@@ -1016,7 +1016,8 @@ function displayTables() {
                 ['95%传说装备', 15000, 0],
                 ['完美装备', 20000, 0]
             ];
-            eventShop[1][2] = '50.00';
+            const hp2mcValue = Number(hp2mc);
+            eventShop[1][2] = (Number.isFinite(hp2mcValue) ? hp2mcValue : 50.0).toFixed(2);
             var ticketProb = [0.14, 0.12, 0.06, 0.12, 0.12, 0.16, 0.1, 0.1, 0.04, 0.04]; // 各种类门票概率
             // var tpProb = [[2, 3, 4], [4, 5, 6], [0.75, 0.2, 0.05]]; // 中级、高级门票包种类与概率
             var tpmProb = [[1, 2, 3, 4], [0.54, 0.26, 0.13, 0.07]]; // 中高级门票包分开
@@ -1379,15 +1380,15 @@ function displayTables() {
                 ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0]
             ];
             var act2ep = 2.5; // 活跃度转化活动物品，可配置
-            var ep2mc = 56.6; // 活动物品价值金币，可配置
+            var ep2mc = 50.0; // 活动物品价值金币，可配置
             // var effCoef = 0.75; // 效率相比标旗的速度衰减，可配置
             // var nfCoef = 0.75; // 盲扫相比标旗的速度衰减，可配置
             var arenaCoef = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]; // 竞技场用时系数，可配置
             var ratesAv = [];
             var ratesAt = [];
             if (result.configurableCoef) {
-                act2ep = result.configurableCoef[0];
-                ep2mc = result.configurableCoef[1];
+                act2ep = result.configurableCoef[0] || 2.5;
+                ep2mc = result.configurableCoef[1] || 50.0;
                 // nfCoef = result.configurableCoef[2];
                 // effCoef = result.configurableCoef[3];
                 arenaCoef = result.configurableCoef.slice(2);

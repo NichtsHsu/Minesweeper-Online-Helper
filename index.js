@@ -196,6 +196,19 @@ function clearSettingValueInputs() {
     });
 }
 
+function setSettingActionFeedback(buttonId, state, message) {
+    if (typeof window.setButtonState === 'function' && buttonId) {
+        window.setButtonState(buttonId, state);
+        setTimeout(function() {
+            window.setButtonState(buttonId, 'idle');
+        }, 2200);
+    }
+
+    if (typeof window.showMainToast === 'function' && message) {
+        window.showMainToast(message, state === 'error' ? 'error' : 'success');
+    }
+}
+
 function toggleNavbarCollapsed() {
     document.body.classList.toggle('nav-collapsed');
     syncNavbarToggleIcon();
@@ -350,7 +363,6 @@ document.addEventListener('DOMContentLoaded', function() {
         showPage('eventQuest');
     });
     document.getElementById('nav-setting').addEventListener('click', function(event) {
-        document.getElementById('saveSucc').style.display = 'none';
         showPage('setting');
     });
     document.getElementById('nav-help').addEventListener('click', function(event) {
@@ -1712,7 +1724,7 @@ const tm = 10;
 const lm = 8;
 const DEFAULT_THEME_NAME = '默认';
 const DEFAULT_TABLE_PAGE_SIZE = 10;
-const DEFAULT_CONFIGURABLE_COEF = [2.5, 56.6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 56.6];
+const DEFAULT_CONFIGURABLE_COEF = [2.5, 50.0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 50.0];
 const DEFAULT_AUTO_UPDATE = [[false, 0, 0, 0], [false, 0, 0, 0], [false, 0, 0, 0], [false]];
 
 function cloneDefaultAutoUpdate() {
@@ -1756,6 +1768,34 @@ function applyArenaCoefPreview(configurableCoef) {
             }
         }
     }
+}
+
+function getDraftConfigurableCoefFromInputs() {
+    const readNumericInput = function(inputId, fallbackValue) {
+        const input = document.getElementById(inputId);
+        if (!input) {
+            return fallbackValue;
+        }
+        const raw = input.value.trim() !== '' ? input.value.trim() : input.placeholder;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : fallbackValue;
+    };
+
+    return [
+        readNumericInput('act2ep', DEFAULT_CONFIGURABLE_COEF[0]),
+        readNumericInput('ep2mc', DEFAULT_CONFIGURABLE_COEF[1]),
+        readNumericInput('spArenaCoef', DEFAULT_CONFIGURABLE_COEF[2]),
+        readNumericInput('spngArenaCoef', DEFAULT_CONFIGURABLE_COEF[3]),
+        readNumericInput('nfArenaCoef', DEFAULT_CONFIGURABLE_COEF[4]),
+        readNumericInput('effArenaCoef', DEFAULT_CONFIGURABLE_COEF[5]),
+        readNumericInput('hdArenaCoef', DEFAULT_CONFIGURABLE_COEF[6]),
+        readNumericInput('rdArenaCoef', DEFAULT_CONFIGURABLE_COEF[7]),
+        readNumericInput('hcArenaCoef', DEFAULT_CONFIGURABLE_COEF[8]),
+        readNumericInput('hcngArenaCoef', DEFAULT_CONFIGURABLE_COEF[9]),
+        readNumericInput('edArenaCoef', DEFAULT_CONFIGURABLE_COEF[10]),
+        readNumericInput('nmArenaCoef', DEFAULT_CONFIGURABLE_COEF[11]),
+        readNumericInput('hp2mc', DEFAULT_CONFIGURABLE_COEF[12])
+    ];
 }
 
 function applyAutoUpdateInputs(autoUpdate) {
@@ -1867,7 +1907,7 @@ function refreshThemeDependentViews() {
     }
 }
 
-function resetAllSettingsToDefault() {
+function resetAllSettingsToDefault(triggerButtonId) {
     const defaultAutoUpdate = cloneDefaultAutoUpdate();
     const defaultConfigurableCoef = DEFAULT_CONFIGURABLE_COEF.slice();
     const defaultThemeMap = defaultThemes;
@@ -1904,8 +1944,7 @@ function resetAllSettingsToDefault() {
             window.refreshPageTablePagination('setting');
         }
 
-        document.getElementById('saveSucc').innerText = '已重置为默认设置！';
-        document.getElementById('saveSucc').style.display = 'block';
+        setSettingActionFeedback(triggerButtonId || 'resetSetting', 'success', '已重置为默认设置');
     });
 }
 
@@ -1929,6 +1968,31 @@ document.addEventListener('DOMContentLoaded', function() {
         applySettingInputsFromConfig(configurableCoef, tablePageSize);
         clearSettingValueInputs();
         applyArenaCoefPreview(configurableCoef);
+
+        const arenaCoefInputIds = [
+            'spArenaCoef',
+            'spngArenaCoef',
+            'nfArenaCoef',
+            'effArenaCoef',
+            'hdArenaCoef',
+            'rdArenaCoef',
+            'hcArenaCoef',
+            'hcngArenaCoef',
+            'edArenaCoef',
+            'nmArenaCoef'
+        ];
+
+        const syncArenaPreview = function() {
+            applyArenaCoefPreview(getDraftConfigurableCoefFromInputs());
+        };
+
+        arenaCoefInputIds.forEach(function(id) {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', syncArenaPreview);
+                input.addEventListener('change', syncArenaPreview);
+            }
+        });
     });
     chrome.storage.local.get('autoUpdate', function (result) {
         const autoUpdate = Array.isArray(result.autoUpdate) ? result.autoUpdate : cloneDefaultAutoUpdate();
@@ -1988,6 +2052,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     /* 保存设置 */
     document.getElementById('saveSetting').addEventListener('click', function () {
+        let saveFailed = false;
+        let saveErrorMessage = '';
         /* 刷新时间 */
         {
             var autoUpdate = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0]];
@@ -2023,17 +2089,13 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             const pId = document.getElementById('personalId').value;
             if (pId.trim() === '') {
-                document.getElementById('saveSucc').innerText = '保存成功！'
-                document.getElementById('saveSucc').style.display = 'block';
             } else if (!isNaN(pId)) {
                 chrome.storage.local.set({ pId: pId });
                 document.getElementById('pIdNow').innerText = pId;
                 document.getElementById('personalId').placeholder = pId;
-                document.getElementById('saveSucc').innerText = '保存成功！'
-                document.getElementById('saveSucc').style.display = 'block';
             } else {
-                document.getElementById('saveSucc').innerText = 'ID格式错误'
-                document.getElementById('saveSucc').style.display = 'block';
+                saveFailed = true;
+                saveErrorMessage = 'ID格式错误';
             }
         }
         /* 可配置参数 */
@@ -2049,7 +2111,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             configurableCoef[0] = readSettingInput('act2ep', 2.5);
-            configurableCoef[1] = readSettingInput('ep2mc', 56.6);
+            configurableCoef[1] = readSettingInput('ep2mc', 50.0);
             configurableCoef[2] = readSettingInput('spArenaCoef', 1);
             configurableCoef[3] = readSettingInput('spngArenaCoef', 1);
             configurableCoef[4] = readSettingInput('nfArenaCoef', 1);
@@ -2060,7 +2122,7 @@ document.addEventListener('DOMContentLoaded', function() {
             configurableCoef[9] = readSettingInput('hcngArenaCoef', 1);
             configurableCoef[10] = readSettingInput('edArenaCoef', 1);
             configurableCoef[11] = readSettingInput('nmArenaCoef', 1);
-            configurableCoef[12] = readSettingInput('hp2mc', 56.6);
+            configurableCoef[12] = readSettingInput('hp2mc', 50.0);
 
             chrome.storage.local.set({ configurableCoef: configurableCoef });
             const acsTable = document.getElementById('arenaCoefSettingTable');
@@ -2093,6 +2155,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.setTablePageSizeSetting(tablePageSize);
             }
         }
+
+        if (saveFailed) {
+            setSettingActionFeedback('saveSetting', 'error', saveErrorMessage || '保存失败');
+        } else {
+            setSettingActionFeedback('saveSetting', 'success', '设置已保存');
+        }
     });
     /* 重置设置 */
     document.getElementById('resetSetting').addEventListener('click', function () {
@@ -2100,10 +2168,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!confirmReset) {
             return;
         }
-        resetAllSettingsToDefault();
+        resetAllSettingsToDefault('resetSetting');
     });
     /* 备份数据 */
     document.getElementById('backupButton').addEventListener('click', function () {
+        setSettingActionFeedback('backupButton', 'loading');
         chrome.storage.local.get(null, function (result) {
             const jsonData = JSON.stringify(result, null, 2); // 格式化 JSON
             const blob = new Blob([jsonData], { type: 'application/json' });
@@ -2118,6 +2187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url); // 释放 URL 对象
+            setSettingActionFeedback('backupButton', 'success', '备份文件已下载');
         });
     });
     /* 恢复数据 */
@@ -2125,6 +2195,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('restoreInput').click(); // 点击button触发input
     });
     document.getElementById('restoreInput').onchange = function(event) {
+        setSettingActionFeedback('restoreButton', 'loading');
         const file = event.target.files[0]; // 获取选中的文件
         const reader = new FileReader();
         // 成功读取后解析文件
@@ -2329,8 +2400,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 // location.reload();
                 console.log('恢复数据成功');
+                setSettingActionFeedback('restoreButton', 'success', '数据恢复完成');
             } catch (error) {
                 console.error('恢复数据失败', error);
+                setSettingActionFeedback('restoreButton', 'error', '恢复数据失败');
                 window.alert('恢复数据失败');
             }
         };
