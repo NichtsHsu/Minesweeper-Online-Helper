@@ -576,14 +576,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             gpMap[newDate] = gemsPrice;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ gemsPriceMap: gpMap });
+            chrome.storage.local.set({ gemsPriceMap: gpMap }, function() {
+                displayPriceDaily();
+                displayTables();
+            });
         });
         document.getElementById('flag1').textContent = 1;
         setButtonState('updateMarketPage', 'success');
-        setTimeout(() => {
-            displayPriceDaily();
-            displayTables();
-        }, 10);
     } else if (request.action === 'sendTicketPrice') { // 竞技场门票
         let tpNew = request.ticketPrice;
         let ticketPrice = request.ticketPrice;
@@ -611,15 +610,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             tpMap[newDate] = ticketPrice;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ ticketPrice: ticketPrice });
-            chrome.storage.local.set({ ticketPriceMap: tpMap });
+            chrome.storage.local.set({ ticketPrice: ticketPrice, ticketPriceMap: tpMap }, function() {
+                displayPriceDaily();
+                displayTables();
+            });
         });
         document.getElementById('flag2').textContent = 1;   // 设置成功标记
         setButtonState('updateAtPrice', 'success');
-        setTimeout(() => {
-            displayPriceDaily();
-            displayTables();
-        }, 10);
     } else if (request.action === 'sendEquipStats') { // 装备加成
         let equipStats = request.equipStats;
         console.log(timeStr, '收到装备加成：', equipStats);
@@ -636,13 +633,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             equipStatsMap[newDate] = equipStats;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ equipStatsMap: equipStatsMap });
+            chrome.storage.local.set({ equipStatsMap: equipStatsMap }, function() {
+                displayTables();
+            });
         });
         document.getElementById('flagEquip').textContent = 1;   // 设置成功标记
         setButtonState('updateEquipmentStats', 'success');
-        setTimeout(() => {
-            displayTables();
-        }, 10);
     } else if (request.action === 'sendStatistics') { // 游戏数据
         let statistics = request.statistics;
         console.log(timeStr, '收到游戏数据更新：', statistics);
@@ -660,13 +656,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             stMap[newDate] = statistics;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ statisticsMap: stMap });
+            chrome.storage.local.set({ statisticsMap: stMap }, function() {
+                displayTables();
+            });
         });
         document.getElementById('flag5').textContent = 1;   // 设置成功标记
         setButtonState('updateStatistic', 'success');
-        setTimeout(() => {
-            displayTables();
-        }, 10);
     } else if (request.action === 'sendPersonalData') { // 个人数据
         let personalData = request.personalData;
         console.log(timeStr, '收到个人数据更新:', personalData);   // 在控制台打出结果
@@ -684,13 +679,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             pdMap[newDate] = personalData;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ personalDataMap: pdMap });
+            chrome.storage.local.set({ personalDataMap: pdMap }, function() {
+                displayTables();
+            });
         });
         document.getElementById('flag3').textContent = 1;   // 设置成功标记
         setButtonState('updatePersonalData', 'success');
-        setTimeout(() => {
-            displayTables();
-        }, 10);
     } else if (request.action === 'personalEconomy') { // 游戏经济
         let personalEco = request.personalEco;
         console.log(timeStr, '收到财产估值更新：', personalEco);   // 在控制台打出结果
@@ -708,13 +702,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             peMap[newDate] = personalEco;
         
             // 保存更新后的数据
-            chrome.storage.local.set({ personalEcoMap: peMap });
+            chrome.storage.local.set({ personalEcoMap: peMap }, function() {
+                displayTables();
+            });
         });
         document.getElementById('flagPe').textContent = 1;   // 设置成功标记
         setButtonState('updateEconomy', 'success');
-        setTimeout(() => {
-            displayTables();
-        }, 10);
     }
 });
 
