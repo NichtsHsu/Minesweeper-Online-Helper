@@ -642,7 +642,7 @@ body {
 .trophyFlex {
     align-items: flex-start;
 }
-.trophyFlex .flexContentSon {
+.trophyFlex > table {
     flex: 1 1 0;
     min-width: 200px;
 }
@@ -1108,7 +1108,7 @@ option {
 }
 /* 完美线 */
 #tablePerfectLine {
-    width: 300px;
+    width: 380px;
 }
 #tablePerfectLine tbody td:first-child {
     /* background-color: #ACD8A7; */

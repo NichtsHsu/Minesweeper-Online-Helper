@@ -1084,111 +1084,234 @@ function displayTables() {
                 tableEs.rows[i].cells[2].style.backgroundColor = levelColor[i - 1];
             }
             // 完美线
+            var epDiscount = Number(result.epDiscount) || 0;
+            if (epDiscount < 0) epDiscount = 0;
+            if (epDiscount > 100) epDiscount = 100;
+            var discountMul = (100 - epDiscount) / 100; // 折扣系数
             var perfectLine = [
                 ['今日/累计', 0, 0],
-                ['完美线', '平均每日', '当日线', '剩余每日'],
-                ['3k', 0, 0, 0],
-                ['4.5k', 0, 0, 0],
-                ['6k', 0, 0, 0],
-                ['10k', 0, 0, 0],
-                ['15k', 0, 0, 0],
-                ['20k', 0, 0, 0],
-                ['20.5k', 0, 0, 0],
-                ['21k', 0, 0, 0],
-                ['40k', 0, 0, 0],
-                ['40.5k', 0, 0, 0],
-                ['41k', 0, 0, 0],
-                ['41.5k', 0, 0, 0],
-                ['42k', 0, 0, 0],
-                ['自定义', '', '', ''],
-                [0, 0, 0, 0]
+                ['完美线', '折扣后', '平均每日', '当日线', '剩余每日'],
+                ['3k', 0, 0, 0, 0],
+                ['4.5k', 0, 0, 0, 0],
+                ['6k', 0, 0, 0, 0],
+                ['10k', 0, 0, 0, 0],
+                ['15k', 0, 0, 0, 0],
+                ['20k', 0, 0, 0, 0],
+                ['20.5k', 0, 0, 0, 0],
+                ['21k', 0, 0, 0, 0],
+                ['40k', 0, 0, 0, 0],
+                ['40.5k', 0, 0, 0, 0],
+                ['41k', 0, 0, 0, 0],
+                ['41.5k', 0, 0, 0, 0],
+                ['42k', 0, 0, 0, 0],
+                ['自定义', '', '', '', ''],
+                [0, 0, 0, 0, 0]
             ]
             let currentYear = new Date().getUTCFullYear();
             let currentMonth = new Date().getUTCMonth();
             let currentDate = new Date().getUTCDate();
             let dayNum = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const normalizeNumber = function(value) {
+                if (typeof value === 'number') {
+                    return Number.isFinite(value) ? value : NaN;
+                }
+                if (value === null || value === undefined) {
+                    return NaN;
+                }
+                const cleaned = String(value).replace(/\s+/g, '').replace(/,/g, '');
+                if (!cleaned) {
+                    return NaN;
+                }
+                const parsed = Number(cleaned);
+                return Number.isFinite(parsed) ? parsed : NaN;
+            };
+            const currentEpNum = normalizeNumber(personalData?.[18]?.[7]);
             if (stDaily[1] && stDaily[1][12]) {
                 perfectLine[0][1] = stDaily[1][12];
             } else {
                 perfectLine[0][1] = '暂无数据';
             }
-            if (personalData[18]) {
-                perfectLine[0][2] = personalData[18][7];
+            if (Number.isFinite(currentEpNum)) {
+                perfectLine[0][2] = currentEpNum;
             } else {
                 perfectLine[0][2] = '暂无数据';
             }
             for (let i = 2; i < perfectLine.length - 2; i++) {
                 let epNum = Number(perfectLine[i][0].replace('k', ''));
-                var avg = epNum * 1000 / (dayNum - 3);
-                perfectLine[i][1] = parseFloat(avg.toFixed(0));
-                var total = epNum * 1000 / (dayNum - 3) * Math.max(currentDate - 3, 0);
-                perfectLine[i][2] = parseFloat(total.toFixed(0));
-                if (personalData[18]) {
-                    var left = (epNum * 1000 - personalData[18][7]) / Math.min(dayNum - currentDate + 1, dayNum - 3);
-                    perfectLine[i][3] = parseFloat(Math.max(0, left).toFixed(0));
+                let epTarget = epNum * 1000 * discountMul;
+                perfectLine[i][1] = parseFloat(epTarget.toFixed(0));
+                var avg = epTarget / (dayNum - 3);
+                perfectLine[i][2] = parseFloat(avg.toFixed(0));
+                var total = epTarget / (dayNum - 3) * Math.max(currentDate - 3, 0);
+                perfectLine[i][3] = parseFloat(total.toFixed(0));
+                if (Number.isFinite(currentEpNum)) {
+                    var left = (epTarget - currentEpNum) / Math.min(dayNum - currentDate + 1, dayNum - 3);
+                    perfectLine[i][4] = parseFloat(Math.max(0, left).toFixed(0));
                 } else {
-                    perfectLine[i][3] = '';
+                    perfectLine[i][4] = '';
                 }
             }
             if (result.customEpLine) {
                 perfectLine[16][0] = result.customEpLine;
             }
-            var avg = perfectLine[16][0] / (dayNum - 3);
-            perfectLine[16][1] = parseFloat(avg.toFixed(0));
-            var total = perfectLine[16][0] / (dayNum - 3) * Math.max(currentDate - 3, 0);
-            perfectLine[16][2] = parseFloat(total.toFixed(0));
-            if (personalData[18]) {
-                var left = (perfectLine[16][0] - personalData[18][7]) / Math.min(dayNum - currentDate, dayNum - 3);
-                perfectLine[16][3] = parseFloat(Math.max(0, left).toFixed(0));
+            var customTarget = perfectLine[16][0] * discountMul;
+            perfectLine[16][1] = parseFloat(customTarget.toFixed(0));
+            var avg = customTarget / (dayNum - 3);
+            perfectLine[16][2] = parseFloat(avg.toFixed(0));
+            var total = customTarget / (dayNum - 3) * Math.max(currentDate - 3, 0);
+            perfectLine[16][3] = parseFloat(total.toFixed(0));
+            if (Number.isFinite(currentEpNum)) {
+                var left = (customTarget - currentEpNum) / Math.min(dayNum - currentDate, dayNum - 3);
+                perfectLine[16][4] = parseFloat(Math.max(0, left).toFixed(0));
             } else {
-                perfectLine[16][3] = '';
+                perfectLine[16][4] = '';
             }
-            displayMatrix(perfectLine, 'tablePerfectLine', 4);
-            for (let i = 2; i < perfectLine.length; i++) {
-                if (perfectLine[0][2] < perfectLine[i][2]) {
-                    document.getElementById('tablePerfectLine').rows[i].cells[2].style.color = getColorSetting('perfectLineNotiFc');
+            displayMatrix(perfectLine, 'tablePerfectLine', 5);
+            const applyPerfectLineNotiColor = function() {
+                const perfectLineTableEl = document.getElementById('tablePerfectLine');
+                if (!perfectLineTableEl || !perfectLineTableEl.rows || perfectLineTableEl.rows.length < 3) {
+                    return;
                 }
+                const displayedCurrentEp = normalizeNumber(perfectLineTableEl.rows[0].cells[2].textContent);
+                for (let i = 2; i < perfectLineTableEl.rows.length; i++) {
+                    const dayTarget = normalizeNumber(perfectLineTableEl.rows[i].cells[3].textContent);
+                    if (Number.isFinite(displayedCurrentEp) && Number.isFinite(dayTarget) && displayedCurrentEp < dayTarget) {
+                        perfectLineTableEl.rows[i].cells[3].style.color = getColorSetting('perfectLineNotiFc');
+                    } else {
+                        perfectLineTableEl.rows[i].cells[3].style.color = '';
+                    }
+                }
+            };
+            applyPerfectLineNotiColor();
+            if (tableRenderCache['tablePerfectLine']) {
+                tableRenderCache['tablePerfectLine'].colorFn = applyPerfectLineNotiColor;
             }
-            let customLine = document.getElementById('tablePerfectLine').rows[16].cells[0];
-            var oldLine = customLine.textContent;
-            customLine.addEventListener('click', function(event) {
+            const perfectLineTable = document.getElementById('tablePerfectLine');
+            const getCustomRows = function() {
+                const labelRow = Array.from(perfectLineTable.rows).find(function(row) {
+                    return String(row?.cells?.[0]?.textContent || '').trim() === '自定义';
+                });
+                if (!labelRow) {
+                    return null;
+                }
+                const valueRow = labelRow.nextElementSibling;
+                if (!valueRow || !valueRow.cells || !valueRow.cells[0]) {
+                    return null;
+                }
+                return { labelRow, valueRow };
+            };
+
+            const rowsForCursor = getCustomRows();
+            if (rowsForCursor) {
+                rowsForCursor.labelRow.cells[0].style.cursor = 'pointer';
+                rowsForCursor.valueRow.cells[0].style.cursor = 'pointer';
+            }
+
+            perfectLineTable.addEventListener('click', function(event) {
+                const targetCell = event.target.closest('td');
+                if (!targetCell || !perfectLineTable.contains(targetCell)) {
+                    return;
+                }
+                if (targetCell.cellIndex !== 0) {
+                    return;
+                }
+                const customRows = getCustomRows();
+                if (!customRows) {
+                    return;
+                }
+
+                const clickedRow = targetCell.parentElement;
+                if (clickedRow !== customRows.labelRow && clickedRow !== customRows.valueRow) {
+                    return;
+                }
+
+                const customLine = customRows.valueRow.cells[0];
+                var oldLine = customLine.textContent;
+                if (customLine.querySelector('#setCustomLine')) {
+                    return;
+                }
+
                 // 创建输入框
                 const inputBox = document.createElement('input');
                 inputBox.id = 'setCustomLine';
-                // inputBox.type = 'number';
-                inputBox.placeholder = oldLine;
+                inputBox.value = oldLine;
                 inputBox.style.backgroundColor = 'transparent';
                 inputBox.style.outline = '0px';
-                // inputBox.style.width = '100%';
-                // inputBox.style.height = '100%';
-                // inputBox.style.boxSizing = 'border-box';
                 inputBox.style.textAlign = 'center';
                 inputBox.style.fontSize = '14px';
                 customLine.style.padding = '0px';
                 customLine.textContent = '';
                 customLine.appendChild(inputBox);
-                // 聚焦输入框
+
+                // 聚焦并全选
                 inputBox.focus();
+                inputBox.select();
+                let isSaved = false;
+
                 // 按下回车键保存 按下esc退出
                 inputBox.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
                         let newLine = Number(inputBox.value);
                         if (!isNaN(newLine) && newLine >= 0) {
-                            chrome.storage.local.set({ customEpLine: inputBox.value });
-                            customLine.textContent = inputBox.value;
-                            displayTables();
+                            isSaved = true;
+                            oldLine = String(newLine);
+                            chrome.storage.local.set({ customEpLine: newLine }, function() {
+                                customLine.textContent = oldLine;
+                                displayTables();
+                            });
                         }
                     } else if (e.key === 'Escape') {
                         customLine.textContent = oldLine;
                     }
                 });
+
                 // 监听输入框的失去焦点事件
                 inputBox.addEventListener('blur', function() {
-                    // 更新单元格内容为输入框的值
-                    customLine.textContent = oldLine;
+                    if (!isSaved) {
+                        customLine.textContent = oldLine;
+                    }
                 });
-
             });
+
+            // 折扣输入框
+            const epDiscountInput = document.getElementById('epDiscountInput');
+            if (epDiscountInput) {
+                if (document.activeElement !== epDiscountInput) {
+                    epDiscountInput.value = '';
+                }
+                epDiscountInput.placeholder = epDiscount;
+                if (!epDiscountInput.dataset.bound) {
+                    epDiscountInput.dataset.bound = '1';
+                    const saveDiscount = function() {
+                        let val = parseFloat(epDiscountInput.value);
+                        if (isNaN(val) || val < 0) val = 0;
+                        if (val > 100) val = 100;
+                        epDiscountInput.value = val;
+                        epDiscountInput.placeholder = val;
+                        chrome.storage.local.set({ epDiscount: val }, function() {
+                            displayTables();
+                        });
+                    };
+                    epDiscountInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveDiscount();
+                            epDiscountInput.blur();
+                        }
+                    });
+                    epDiscountInput.addEventListener('blur', function() {
+                        if (epDiscountInput.value !== '') {
+                            saveDiscount();
+                        }
+                        epDiscountInput.value = '';
+                    });
+                    epDiscountInput.addEventListener('focus', function() {
+                        if (epDiscountInput.value === '') {
+                            epDiscountInput.value = epDiscountInput.placeholder;
+                        }
+                    });
+                }
+            }
         }
         /* 完美装备花费 */
         {
@@ -1290,25 +1413,25 @@ function displayTables() {
             var arenaValue = [
                 ['收益', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'],
                 ['速度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['速度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['速度NG', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['速度NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['盲扫', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['盲扫', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['盲扫(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['效率', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['效率', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['效率(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['高难度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['高难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['高难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['随机难度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['随机难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['随机难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['硬核', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['硬核', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['硬核NG', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['硬核NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['耐力', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['耐力', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['耐力(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0]
+                ['噩梦(精英)', 0, 0, 0, 0, 0, 0, 0, 0]
             ];
             // var arenaValue = [
             //     ['类别', '估价/比市场价', 'L1', '', 'L2', '', 'L3', '', 'L4', '', 'L5', '', 'L6', '', 'L7', '', 'L8', ''],
@@ -1335,49 +1458,49 @@ function displayTables() {
             // ];
             var arenaRate = [
                 ['收益/开销', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['普通', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['精英', 0, 0, 0, 0, 0, 0, 0, 0]
+                ['速度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['盲扫', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['盲扫(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['效率', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['效率(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['高难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['高难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['随机难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['随机难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['耐力', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['耐力(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['噩梦(精英)', 0, 0, 0, 0, 0, 0, 0, 0]
             ];
             var arenaTimeRate = [
                 ['净收益/秒', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'],
                 ['速度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['速度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['速度NG', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['速度NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['速度NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['盲扫', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['盲扫', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['盲扫(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['效率', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['效率', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['效率(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['高难度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['高难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['高难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['随机难度', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['随机难度', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['随机难度(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['硬核', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['硬核', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['硬核NG', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['硬核NG', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['硬核NG(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['耐力', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['耐力', 0, 0, 0, 0, 0, 0, 0, 0],
+                ['耐力(精英)', 0, 0, 0, 0, 0, 0, 0, 0],
                 ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0],
-                ['噩梦', 0, 0, 0, 0, 0, 0, 0, 0]
+                ['噩梦(精英)', 0, 0, 0, 0, 0, 0, 0, 0]
             ];
             var act2ep = 2.5; // 活跃度转化活动物品，可配置
             var ep2mc = 50.0; // 活动物品价值金币，可配置
@@ -1387,11 +1510,16 @@ function displayTables() {
             var ratesAv = [];
             var ratesAt = [];
             if (result.configurableCoef) {
-                act2ep = result.configurableCoef[0] || 2.5;
-                ep2mc = result.configurableCoef[1] || 50.0;
+                const parsedAct2ep = Number(result.configurableCoef[0]);
+                const parsedEp2mc = Number(result.configurableCoef[1]);
+                act2ep = Number.isFinite(parsedAct2ep) ? parsedAct2ep : 2.5;
+                ep2mc = Number.isFinite(parsedEp2mc) ? parsedEp2mc : 50.0;
                 // nfCoef = result.configurableCoef[2];
                 // effCoef = result.configurableCoef[3];
-                arenaCoef = result.configurableCoef.slice(2);
+                arenaCoef = arenaCoef.map(function(_, idx) {
+                    const parsed = Number(result.configurableCoef[idx + 2]);
+                    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+                });
             }
             // var arenaExpectTime = [];
             for (let t = 0; t < tm; t++) {
@@ -1414,8 +1542,11 @@ function displayTables() {
                                                  + xType[t] * coef[3] * xL[l] * actCoe * act2ep * ep2mc) | 0; // 活跃
                     // var rate = arenaValue[2 * t + 1][2 * l + 2] / ticketPrice[t + 1][l + 1];
                     // arenaValue[2 * t + 1][2 * l + 3] = rate.toFixed(2);
-                    var rate = arenaValue[2 * t + 1][l + 1] / ticketPrice[t + 1][l + 1];
-                    arenaRate[2 * t + 1][l + 1] = rate.toFixed(2);
+                    const ticketCost = Number(ticketPrice[t + 1][l + 1]);
+                    var rate = Number.isFinite(ticketCost) && ticketCost > 0
+                        ? arenaValue[2 * t + 1][l + 1] / ticketCost
+                        : NaN;
+                    arenaRate[2 * t + 1][l + 1] = Number.isFinite(rate) ? rate.toFixed(2) : '-';
                     // 打精英的期望收益比门票价格加功勋花费
                     // arenaValue[2 * t + 2][2 * l + 2] = (arenaValue[2 * t + 1][2 * l + 2] * 2
                     //                                  + xType[t] * coef[4] * xL[l] * epCoe * hp2mc) | 0; // 精英额外给活动点
@@ -1423,11 +1554,14 @@ function displayTables() {
                                                  + xType[t] * coef[4] * xL[l] * epCoe * ep2mc) | 0; // 精英额外给活动点
                     // var rateE = arenaValue[2 * t + 2][2 * l + 2] / (+ticketPrice[t + 1][l + 1] + xType[t] * coef[2] * elite[l] * hp2mc);
                     // arenaValue[2 * t + 2][2 * l + 3] = rateE.toFixed(2);
-                    var rateE = arenaValue[2 * t + 2][l + 1] / (+ticketPrice[t + 1][l + 1] + xType[t] * coef[2] * elite[l] * hp2mc);
-                    arenaRate[2 * t + 2][l + 1] = rateE.toFixed(2);
+                    const eliteCost = ticketCost + xType[t] * coef[2] * elite[l] * hp2mc;
+                    var rateE = Number.isFinite(eliteCost) && eliteCost > 0
+                        ? arenaValue[2 * t + 2][l + 1] / eliteCost
+                        : NaN;
+                    arenaRate[2 * t + 2][l + 1] = Number.isFinite(rateE) ? rateE.toFixed(2) : '-';
                     // arenaValue[3 * t + 3][l + 2] = ticketPrice[t + 1][l + 1];
-                    ratesAv[2 * t * lm + 2 * l] = rate;
-                    ratesAv[2 * t * lm + 2 * l + 1] = rateE;
+                    ratesAv[2 * t * lm + 2 * l] = Number.isFinite(rate) ? rate : null;
+                    ratesAv[2 * t * lm + 2 * l + 1] = Number.isFinite(rateE) ? rateE : null;
                     // 打竞技场的期望时间（单位为难度）
                     // var time = (ld[t][l] + rd[t][l]) / 2 * gn[t][l];
                     // arenaExpectTime[t][l] = time;
@@ -1438,14 +1572,18 @@ function displayTables() {
                     // }
                     // time *= arenaCoef[t];
                     var time = arenaExpectTime[t][l] * arenaPreCoef[t] * arenaCoef[t];
-                    var rateTime = (arenaValue[2 * t + 1][l + 1] - ticketPrice[t + 1][l + 1]) / time;
-                    var rateTimeE = (arenaValue[2 * t + 2][l + 1] - ticketPrice[t + 1][l + 1] - xType[t] * coef[2] * elite[l] * hp2mc) / time / 2;
+                    var rateTime = Number.isFinite(time) && time > 0
+                        ? (arenaValue[2 * t + 1][l + 1] - ticketCost) / time
+                        : NaN;
+                    var rateTimeE = Number.isFinite(time) && time > 0
+                        ? (arenaValue[2 * t + 2][l + 1] - ticketCost - xType[t] * coef[2] * elite[l] * hp2mc) / time / 2
+                        : NaN;
                     // var rateTime = time;
                     // var rateTimeE = time * 2;
-                    arenaTimeRate[2 * t + 1][l + 1] = rateTime.toFixed(2);
-                    arenaTimeRate[2 * t + 2][l + 1] = rateTimeE.toFixed(2);
-                    ratesAt[2 * t * lm + 2 * l] = rateTime;
-                    ratesAt[2 * t * lm + 2 * l + 1] = rateTimeE;
+                    arenaTimeRate[2 * t + 1][l + 1] = Number.isFinite(rateTime) ? rateTime.toFixed(2) : '-';
+                    arenaTimeRate[2 * t + 2][l + 1] = Number.isFinite(rateTimeE) ? rateTimeE.toFixed(2) : '-';
+                    ratesAt[2 * t * lm + 2 * l] = Number.isFinite(rateTime) ? rateTime : null;
+                    ratesAt[2 * t * lm + 2 * l + 1] = Number.isFinite(rateTimeE) ? rateTimeE : null;
                 }
             }
             // console.log(arenaExpectTime);
