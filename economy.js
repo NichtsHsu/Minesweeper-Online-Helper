@@ -9,61 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const tabId = tab1[0].id;
                 chrome.scripting.executeScript({
                     target: { tabId },
-                    function: function () {
-                        var personalEco = [
-                            ['总财产', '装备', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币', '今日增量'],
-                            ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']
-                        ];
-                        try {
-                            let myRank = document.querySelector("#stat_my_rank > a");
-                            myRank.click();
-                            setTimeout(() => {
-                                let myRow = document.querySelector("#stat_table_body > tr.stat-my-row");
-                                let value = myRow.querySelector("td:nth-child(3) > span.help.dotted-underline");
-                                personalEco[1][0] = value.textContent;
-                                hoverBox(value);
-                                let dataDisp = myRow.querySelector("td:nth-child(3) > div > div.popover-content");
-                                var data = dataDisp.innerHTML.split(/<[^>]*>/g);
-                                for (let i = 0; i < data.length; i++) {
-                                    for (let j = 1; j <= personalEco[0].length; j++) {
-                                        if (data[i].includes(personalEco[0][j] + '：')) {
-                                            var match = data[i].match(/：(.*)/);
-                                            personalEco[1][j] = match[1];
-                                            break;
-                                        }
-                                    }
-                                }
-                                let upArrow = document.querySelector("#stat_table_body > tr.stat-my-row > td:nth-child(3) > span.help.price-up > i");
-                                let downArrow = document.querySelector("#stat_table_body > tr.stat-my-row > td:nth-child(3) > span.help.price-down > i");
-                                if (upArrow) {
-                                    hoverBox(upArrow);
-                                } else if (downArrow) {
-                                    hoverBox(downArrow);
-                                }
-                                let growth = document.querySelector("#stat_table_body > tr.stat-my-row > td:nth-child(3) > div > div.tooltip-inner");
-                                if (growth) {
-                                    personalEco[1][11] = growth.textContent;
-                                    console.log(personalEco);
-                                    chrome.runtime.sendMessage({ action: 'personalEconomy', personalEco: personalEco });
-                                }
-                            }, 2000);
-                            
-                            /* 模拟鼠标悬浮在button */
-                            function hoverBox(button) {
-                                let event = new MouseEvent("mouseover", {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    view: window,
-                                    clientX: button.getBoundingClientRect().left + button.offsetWidth / 2,
-                                    clientY: button.getBoundingClientRect().top + button.offsetHeight / 2
-                                });
-                                button.dispatchEvent(event);
-                            }
-                        } catch (e) {
-                            console.log(e);
-                            window.alert('错误页面');
-                        }
-                    }
+                    function: extractEconomy
                 });
             });
         } else {

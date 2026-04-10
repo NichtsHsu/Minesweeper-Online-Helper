@@ -12,17 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 chrome.scripting.executeScript({
                     target: { tabId },
                     args: [uid],
-                    function: function (uid) {
-                        try {
-                            const name = document.querySelector("#PlayerBlock > h2 > div.pull-left > span").textContent;
-                            var friendInfo = [uid, name];
-                            console.log(friendInfo);
-                            chrome.runtime.sendMessage({ action: 'sendFriendInfo', friendInfo: friendInfo });
-                        } catch (e) {
-                            console.log(e);
-                            window.alert('错误页面', e);
-                        }
-                    }
+                    function: extractFriendInfo
                 });
             });
         } else {

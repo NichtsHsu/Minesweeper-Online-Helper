@@ -1,10 +1,10 @@
-/* 主界面按钮状态 */
-const UI_BUTTON_STATE_CLASS_MAP = {
-    idle: 'ui-btn-idle',
-    loading: 'ui-btn-loading',
-    success: 'ui-btn-success',
-    error: 'ui-btn-error'
-};
+/* 主界面按钮状态 —— 基于 uiShared.js */
+var showMainToast = createToastNotifier({
+    hostId: 'toastHost',
+    cssClass: 'uiToast',
+    displayMs: 2400,
+    closeMs: 200
+});
 
 const UI_BUTTON_ACTION_LABEL_MAP = {
     updateStatistic: '刷新游戏数据',
@@ -17,60 +17,13 @@ const UI_BUTTON_ACTION_LABEL_MAP = {
     updateWheel: '分析转盘选项'
 };
 
-function showMainToast(message, tone = 'info') {
-    const host = document.getElementById('toastHost');
-    if (!host || !message) {
-        return;
-    }
-
-    while (host.children.length >= 4) {
-        host.removeChild(host.firstElementChild);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `uiToast ${tone}`;
-    toast.setAttribute('role', 'status');
-    toast.textContent = message;
-    host.appendChild(toast);
-
-    setTimeout(() => {
-        toast.classList.add('closing');
-        setTimeout(() => {
-            if (toast.parentElement === host) {
-                host.removeChild(toast);
-            }
-        }, 200);
-    }, 2400);
-}
-
-function notifyMainButtonState(buttonId, state, previousState) {
-    if (state === previousState) {
-        return;
-    }
-
-    const actionName = UI_BUTTON_ACTION_LABEL_MAP[buttonId];
-    if (!actionName) {
-        return;
-    }
-
-    if (state === 'success') {
-        showMainToast(`${actionName}完成`, 'success');
-    } else if (state === 'error') {
-        showMainToast(`${actionName}失败或超时`, 'error');
-    }
-}
+var _mainButtons = createButtonStateManager({
+    showToast: showMainToast,
+    labelMap: UI_BUTTON_ACTION_LABEL_MAP
+});
 
 function setButtonState(buttonId, state = 'idle') {
-    const button = document.getElementById(buttonId);
-    if (!button) {
-        return;
-    }
-    const previousState = button.dataset.uiState || 'idle';
-    const nextClass = UI_BUTTON_STATE_CLASS_MAP[state] || UI_BUTTON_STATE_CLASS_MAP.idle;
-    button.classList.remove(...Object.values(UI_BUTTON_STATE_CLASS_MAP));
-    button.classList.add(nextClass);
-    button.dataset.uiState = state;
-    notifyMainButtonState(buttonId, state, previousState);
+    _mainButtons.setState(buttonId, state);
 }
 
 function initializeMainButtonStates() {
@@ -2517,7 +2470,7 @@ const eventQuestMap = [
     ["初局", "30", "40", "50", "50", "60", "70", "70", "80", "90", "100", "100", "110", "120", "130", "130", "140", "150", "150", "180", "180", "180", "200", "200", "220", "220", "220", "250"],
     ["初局E", "100", "120", "150", "180", "200", "220", "220", "250", "300", "300", "300", "350", "400", "400", "400", "450", "450", "450", "600", "600", "600", "600", "600", "700", "700", "700", "800"],
     ["中局", "5", "6", "8", "10", "12", "14", "16", "18", "20", "20", "25", "25", "25", "30", "30", "30", "30", "35", "35", "35", "40", "40", "40", "45", "45", "45", "45"],
-    ["中局E", "15", "18", "25", "30", "40", "45", "50", "60", "60", "60", "80", "80", "80", "90", "90", "90", "动胜67", "动胜68", "", "", "动胜70", "动胜70", "动胜70", "动胜72", "动胜72", "动胜72", "动胜72"],
+    ["中局E", "15", "18", "25", "30", "40", "45", "50", "60", "60", "60", "80", "80", "80", "90", "90", "90", "动胜67", "动胜68", "动胜70", "动胜70", "动胜70", "动胜70", "动胜70", "动胜72", "动胜72", "动胜72", "动胜72"],
     ["高局", "1", "1", "2", "2", "2", "3", "3", "3", "4", "4", "4", "5", "5", "5", "6", "6", "6", "7", "7", "7", "8", "8", "8", "8", "10", "10", "10"],
     ["高局E", "3", "3", "6", "6", "6", "10", "10", "10", "12", "12", "12", "15", "15", "15", "18", "18", "18", "22", "22", "22", "25", "25", "25", "25", "30", "30", "30"],
     ["无猜", "中5/困2/地1", "中6/困3/地1", "中8/困3/地2", "中10/困4/地2", "中12/困4/地2", "中14/困5/地3", "中16/困5/地3", "中18/困6/地3", "中20/困6/地4", "中20/困7/地4", "中25/困7/地4", "中25/困8/地5", "中25/困8/地5", "中30/困8/地5", "中30/困10/地6", "中30/困10/地6", "中30/困10/地6", "中35/困12/地7", "中35/困12/地7", "中35/困12/地7", "中40/困12/地8", "中40/困14/地8", "中40/困14/地8", "中45/困14/地8", "中45/困14/地10", "中45/困16/地10", "中45/困15/地10"],
