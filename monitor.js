@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         var updateButton = document.querySelector("#market_search_filters_right > div > a");
                                         updateButton.click();
                                     }, t1);
- 
+
                                     function playAudio(frequency, volume, time) {
                                         var audioCtx = new (window.AudioContext);
                                         // 创建一个振荡器节点

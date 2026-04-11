@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const dateFormatEn = /(\d{1,2})\s+(\w+)\s+(\d{4}),\s+(\d{2}):(\d{2})/; // 匹配 "1 January 2025, 00:00"
                             const todayChs = /今天,\s+(\d{2}):(\d{2})/i; // 匹配 "今天, 01:01"
                             const todayEn = /Today,\s+(\d{2}):(\d{2})/i; // 匹配 "Today, 01:01"
-                            
+
                             var pageNum = 1; // 录入页码
                             var t0 = 50;
                             var t1 = 10;
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 window.URL.revokeObjectURL(url);
                             }, 0);
                         }
-                        
+
                     }
                 });
             });
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const dateFormatEn = /(\d{1,2})\s+(\w+)\s+(\d{4}),\s+(\d{2}):(\d{2})/; // 匹配 "1 January 2025, 00:00"
                             const todayChs = /今天,\s+(\d{2}):(\d{2})/i; // 匹配 "今天, 01:01"
                             const todayEn = /Today,\s+(\d{2}):(\d{2})/i; // 匹配 "Today, 01:01"
-                            
+
                             var pageNum = 0; // 页码偏移
                             var iniPage = 1; // 起始页码
                             const maxPage = 500; // 一次最多500页，可配置
@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 window.URL.revokeObjectURL(url);
                             }, 0);
                         }
-                        
+
                     }
                 });
             });

@@ -49,29 +49,29 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (message.includes('L') && message.includes('+') &&
                                 (message.includes('free') || message.includes('FREE') || message.includes('Free') || message.includes('免费') ||
                                 (!message.includes('rading') && !message.includes('rade') && !message.includes('RADE') && !message.includes('RADING') &&
-                                !message.includes('ell') && !message.includes('ELL') && !message.includes('ale') && !message.includes('ALE') && 
-                                !message.includes('mc') && !message.includes('MC') && !message.includes('Mc') && 
-                                !message.includes('xchang') && !message.includes('XCHANG') && !message.includes(' per ') && 
-                                !message.includes('/h') && !message.includes('/p') && !message.includes('/e') && !message.includes('/l') && !message.includes('/ ') && 
-                                !message.includes('/H') && !message.includes('/P') && !message.includes('/E') && !message.includes('/L') && !message.includes('/ ') && 
+                                !message.includes('ell') && !message.includes('ELL') && !message.includes('ale') && !message.includes('ALE') &&
+                                !message.includes('mc') && !message.includes('MC') && !message.includes('Mc') &&
+                                !message.includes('xchang') && !message.includes('XCHANG') && !message.includes(' per ') &&
+                                !message.includes('/h') && !message.includes('/p') && !message.includes('/e') && !message.includes('/l') && !message.includes('/ ') &&
+                                !message.includes('/H') && !message.includes('/P') && !message.includes('/E') && !message.includes('/L') && !message.includes('/ ') &&
                                 (message.includes('Win') || message.includes('Earn') || message.includes('Find') || message.includes('Complete') ||
-                                message.includes('获得') || message.includes('完成') || message.includes('获取') || message.includes('达到') || 
+                                message.includes('获得') || message.includes('完成') || message.includes('获取') || message.includes('达到') ||
                                 message.includes('獲得'))))) {
                                     playAudio(523.2, 0.5, 0.5); // 播放提示音
                                     // const regex = /(Beginner|Intermediate|Expert|custom|Easy|Medium|Hard|Evil|row|flags|efficiency|minecoin|honour|gem|arena coins|arena|初级|中级|高级|自定义|简单|中等|困难|地狱|连胜|盲扫|效率|金币|功勋|宝石|竞技场币|竞技场|初級|中級|高級|自訂|簡單|中等|困難|地獄|連勝|無旗幟|效率|金幣|榮譽值|寶石|競技場硬幣|競技場)/g;
                                     const regex = /L(\d+)(E?)[^+]*\+/g;
-                                    const abbr = { 'Beginner':['beg', '#54E083'], 'Intermediate':['int', '#54E083'], 'Expert':['exp', '#54E083'], 'custom':['cus', '#C1C1C1'], 
-                                        'Easy':['easy', '#17FFFF'], 'Medium':['med', '#17FFFF'], 'Hard':['hard', '#17FFFF'], 'Evil':['evil', '#17FFFF'], 
-                                        'row':['ws', '#E0B1FF'], 'flags':['nf', '#72CFFE'], 'efficiency':['eff', '#FFD117'], 
-                                        'minecoin':['mc', '#FFF017'], 'honour':['hp', '#B2F0FF'], 'gem':['gem', '#F0F0F0'], 'arena coins':['ac', '#83FFB2'], 'higher':['arena', '#83FFB2'], 
+                                    const abbr = { 'Beginner':['beg', '#54E083'], 'Intermediate':['int', '#54E083'], 'Expert':['exp', '#54E083'], 'custom':['cus', '#C1C1C1'],
+                                        'Easy':['easy', '#17FFFF'], 'Medium':['med', '#17FFFF'], 'Hard':['hard', '#17FFFF'], 'Evil':['evil', '#17FFFF'],
+                                        'row':['ws', '#E0B1FF'], 'flags':['nf', '#72CFFE'], 'efficiency':['eff', '#FFD117'],
+                                        'minecoin':['mc', '#FFF017'], 'honour':['hp', '#B2F0FF'], 'gem':['gem', '#F0F0F0'], 'arena coins':['ac', '#83FFB2'], 'higher':['arena', '#83FFB2'],
                                         'PvP':['pvp', '#007700'],
-                                        '初级':['初级', '#54E083'], '中级':['中级', '#54E083'], '高级':['高级', '#54E083'], '自定义':['自定义', '#C1C1C1'], 
-                                        '简单':['简单', '#17FFFF'], '中等':['中等', '#17FFFF'], '困难':['困难', '#17FFFF'], '地狱':['地狱', '#17FFFF'], 
-                                        '连胜':['连胜', '#E0B1FF'], '盲扫':['盲扫', '#72CFFE'], '效率':['效率', '#FFD117'], 
-                                        '金币':['金币', '#FFF017'], '功勋':['功勋', '#B2F0FF'], '宝石':['宝石', '#F0F0F0'], '竞技场币':['场币', '#83FFB2'], '更高':['竞技场', '#83FFB2'], 
-                                        '初級':['初级', '#54E083'], '中級':['中级', '#54E083'], '高級':['高级', '#54E083'], '自訂':['自定义', '#C1C1C1'], 
-                                        '簡單':['简单', '#17FFFF'], '中等':['中等', '#17FFFF'], '困難':['困难', '#17FFFF'], '地獄':['地狱', '#17FFFF'], 
-                                        '連勝':['连胜', '#E0B1FF'], '無旗幟':['无旗', '#72CFFE'], '效率':['效率', '#FFD117'], 
+                                        '初级':['初级', '#54E083'], '中级':['中级', '#54E083'], '高级':['高级', '#54E083'], '自定义':['自定义', '#C1C1C1'],
+                                        '简单':['简单', '#17FFFF'], '中等':['中等', '#17FFFF'], '困难':['困难', '#17FFFF'], '地狱':['地狱', '#17FFFF'],
+                                        '连胜':['连胜', '#E0B1FF'], '盲扫':['盲扫', '#72CFFE'], '效率':['效率', '#FFD117'],
+                                        '金币':['金币', '#FFF017'], '功勋':['功勋', '#B2F0FF'], '宝石':['宝石', '#F0F0F0'], '竞技场币':['场币', '#83FFB2'], '更高':['竞技场', '#83FFB2'],
+                                        '初級':['初级', '#54E083'], '中級':['中级', '#54E083'], '高級':['高级', '#54E083'], '自訂':['自定义', '#C1C1C1'],
+                                        '簡單':['简单', '#17FFFF'], '中等':['中等', '#17FFFF'], '困難':['困难', '#17FFFF'], '地獄':['地狱', '#17FFFF'],
+                                        '連勝':['连胜', '#E0B1FF'], '無旗幟':['无旗', '#72CFFE'], '效率':['效率', '#FFD117'],
                                         '金幣':['金币', '#FFF017'], '榮譽值':['功勋', '#B2F0FF'], '寶石':['宝石', '#F0F0F0'], '競技場硬幣':['场币', '#83FFB2'], '競技場':['竞技场', '#83FFB2'],
                                         '一對一':['pvp', '#007700']}
                                     // const matchedStr = [...message.matchAll(regex)].map(match => match[0]);
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         const numB = parseInt(b[1], 10);
                                         const hasE_A = a[2] !== '';
                                         const hasE_B = b[2] !== '';
-                                    
+
                                         // 优先排序没有E的结果
                                         if (hasE_A === hasE_B) {
                                             return numA - numB; // 数字升序

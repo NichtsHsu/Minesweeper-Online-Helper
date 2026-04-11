@@ -290,7 +290,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             //     }
             // }
             console.log('历史活动竞技场门票价格:', eapMap);
-            chrome.storage.local.set({ eaPrice: eaPrice }); 
+            chrome.storage.local.set({ eaPrice: eaPrice });
             chrome.storage.local.set({ eaPriceMap: eapMap }); // 保存更新后的数据
         });
         document.getElementById('flagEa').textContent = 1;   // 设置成功标记

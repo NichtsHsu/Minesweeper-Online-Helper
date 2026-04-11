@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     function: extractFriendQuest
                 });
             });
-            
+
             setPopupButtonState(buttonFqAll, 'ready');
             buttonFqAll.style.cursor = 'pointer'; // 鼠标指针样式
             buttonFqAll.addEventListener('click', function () {
@@ -67,13 +67,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             }
             if (fqInfo[newMonth]) {
                 for (const id in fqInfo[newMonth].fqSend) {
-                    if (!fqInfoAll[newMonth].fqSend.hasOwnProperty(id)) { 
+                    if (!fqInfoAll[newMonth].fqSend.hasOwnProperty(id)) {
                         fqDaily[newDate].fqSend[id] = fqInfo[newMonth].fqSend[id];
                     }
                     fqInfoAll[newMonth].fqSend[id] = fqInfo[newMonth].fqSend[id];
                 }
                 for (const id in fqInfo[newMonth].fqReceive) {
-                    if (!fqInfoAll[newMonth].fqReceive.hasOwnProperty(id)) { 
+                    if (!fqInfoAll[newMonth].fqReceive.hasOwnProperty(id)) {
                         fqDaily[newDate].fqReceive[id] = fqInfo[newMonth].fqReceive[id];
                     }
                     fqInfoAll[newMonth].fqReceive[id] = fqInfo[newMonth].fqReceive[id];

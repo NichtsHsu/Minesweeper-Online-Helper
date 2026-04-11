@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         checkSkin = setInterval(() => {
                             changeSkin();
                         }, t0);
-                        
+
                         confirm.addEventListener('click', function () {
                             let setArea1 = document.getElementById("setArea");
                             const numberInputs = setArea1.querySelectorAll('input');

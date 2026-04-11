@@ -187,7 +187,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 /* 显示纯文本 */
 function displayTextMatrix(matrix, tableId, width = 0) {
-    
+
     let rows = matrix.length;
     let cols = matrix[0].length;
     if (width) {

@@ -38,7 +38,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.storage.local.set({ eaPriceMap: eapMap }); // 保存更新后的数据
         });
         setPopupButtonState('buttonEa', 'success');
-    } 
+    }
 });
 
 document.addEventListener('DOMContentLoaded', function() {

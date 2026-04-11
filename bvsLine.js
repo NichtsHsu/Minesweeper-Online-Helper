@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             var ops = 0;
                             var rows;
                             var cols;
-    
+
                             var bvMap = {};
                             var clickNum = 0;
                             var bvsData = []; // 存每一秒的bvs
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const maxValue = Math.max(...dataY);
                             const xScale = (width - padding * 2) / (dataY.length - 1);
                             const yScale = (height - padding * 2) / maxValue;
-                            
+
                             ctx.font = '16px Arial';
                             ctx.fillStyle = 'rgb(0, 0, 0)';
                             // 绘制折线

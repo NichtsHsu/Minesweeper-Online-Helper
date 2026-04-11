@@ -1,21 +1,21 @@
-{  
-    "manifest_version": 3,  
-    "name": "Minesweeper Online Helper",  
-    "version": "3.12.0.4",  
-    "description": "Minesweeper Online助手",  
+{
+    "manifest_version": 3,
+    "name": "Minesweeper Online Helper",
+    "version": "3.12.0.5",
+    "description": "Minesweeper Online助手",
     "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "unlimitedStorage"],
     "action": {
-        "default_popup": "displayPage.html",  
-        "default_icon": {  
-            "16": "moh16.png",  
-            "48": "moh48.png",  
-            "128": "moh128.png"  
-        }  
+        "default_popup": "displayPage.html",
+        "default_icon": {
+            "16": "moh16.png",
+            "48": "moh48.png",
+            "128": "moh128.png"
+        }
     },
     "icons": {
-        "16": "moh16.png",  
-        "48": "moh48.png",  
-        "128": "moh128.png"  
+        "16": "moh16.png",
+        "48": "moh48.png",
+        "128": "moh128.png"
     },
     "host_permissions": [
       "http://*/*",

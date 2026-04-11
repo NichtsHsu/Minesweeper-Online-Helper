@@ -26,7 +26,7 @@ function displayFriendQuest() {
             fqReceiveMap.unshift(ReceiveTitle);
             console.log('收任务汇总：', fqReceiveMap);
             displayMatrix(fqReceiveMap, 'tableFqr');
-    
+
             /* 统计 */
             const dataSend = fqSendMap.slice(1);
             const dataReceive = fqReceiveMap.slice(1);
@@ -44,7 +44,7 @@ function displayFriendQuest() {
             let sumRsRate = 0; // 总收发比（新增）
             let selectedRsRate = 0;
             let sumActivity = 0; // 总活跃（用于计算转化率）
-            
+
             /* 每日统计 */
             let fqDailyMap = [['日期', '昨日活跃度', '发任务数', 'E数', '发任务等级', '转化率', '收任务数', '收任务等级', '收发比']];
             let activityMap = result.activityMap || {}; // 确保存在数据，防止为 undefined
@@ -130,7 +130,7 @@ function displayFriendQuest() {
                 if (person === undefined) {
                     person = '待发送';
                 }
-            
+
                 // 按用户分类
                 if (!personStats[person]) {
                     var personValid = 1;
@@ -165,22 +165,22 @@ function displayFriendQuest() {
                     selectedCountS++;
                     // 累加等级
                     selectedLevelS += levelS;
-                
+
                     personStats[person].countS += 1;
                     personStats[person].sumLevelS += levelS;
                 }
             });
             // 收任务统计
             var qrClassify = [
-                ['自定义', '场币', '竞技场', '宝石', '金币', '经验', 
-                    '初盲', '中盲', '高盲', '困盲', '地盲', 
-                    '初效', '中效', '高效', '初连', '中连', '高连', 
+                ['自定义', '场币', '竞技场', '宝石', '金币', '经验',
+                    '初盲', '中盲', '高盲', '困盲', '地盲',
+                    '初效', '中效', '高效', '初连', '中连', '高连',
                     '初局', '中局', '高局', '中等', '困难', '地狱', 'PvP'],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             ];
-            const qrcKeyWords = [['自定义'], ['竞技场币'], ['竞技场'], ['宝石'], ['金币'], ['经验'], 
-                ['初级', '盲扫'], ['中级', '盲扫'], ['高级', '盲扫'], ['困难', '盲扫'], ['地狱', '盲扫'], 
-                ['初级', '效率'], ['中级', '效率'], ['高级', '效率'], ['初级', '连胜'], ['中级', '连胜'], ['高级', '连胜'], 
+            const qrcKeyWords = [['自定义'], ['竞技场币'], ['竞技场'], ['宝石'], ['金币'], ['经验'],
+                ['初级', '盲扫'], ['中级', '盲扫'], ['高级', '盲扫'], ['困难', '盲扫'], ['地狱', '盲扫'],
+                ['初级', '效率'], ['中级', '效率'], ['高级', '效率'], ['初级', '连胜'], ['中级', '连胜'], ['高级', '连胜'],
                 ['初级'], ['中级'], ['高级'], ['中等'], ['困难'], ['地狱'], ['PvP']];
             dataReceive.forEach(entry => {
                 const lrMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
@@ -212,7 +212,7 @@ function displayFriendQuest() {
                 if (matchFinal == 0) { // 剩下的都是宝石
                     qrClassify[1][3] += levelR;
                 }
-            
+
                 // 按用户分类
                 const person = entry[4]; // 用户id
                 if (!personStats[person]) {
@@ -248,18 +248,18 @@ function displayFriendQuest() {
                     selectedCountR++;
                     // 累加等级
                     selectedLevelR += levelR;
-                
+
                     personStats[person].countR += 1; // 条目数加一
                     personStats[person].sumLevelR += levelR; // a 列的和加上
                 }
             });
-    
+
             // 显示表格
             // let fqStats = Object.entries(personStats).map(([name, stats]) => [
-            //     name, 
-            //     stats.countS, 
-            //     stats.sumLevelS, 
-            //     stats.countR, 
+            //     name,
+            //     stats.countS,
+            //     stats.sumLevelS,
+            //     stats.countR,
             //     stats.sumLevelR,
             //     (stats.sumLevelR / stats.sumLevelS).toFixed(3)
             // ]);
@@ -278,7 +278,7 @@ function displayFriendQuest() {
                     }
             })
             .filter(entry => entry != null);
-    
+
             // 按照 sumLevelR 降序排列
             fqStats.sort((a, b) => {
                 return b[1] - a[1]; // 进行降序比较
@@ -303,7 +303,7 @@ function displayFriendQuest() {
             fqStats.unshift(fqStasTotal);
             displayMatrixBody(fqStats, 'tableFqStats');
             currentFqStats = fqStats;
-            
+
             /* 树状图 */
             let questTreemap = document.getElementById('questReceivedClassifyTreemap');
             if (questTreemap) {
@@ -417,7 +417,7 @@ let currentFqStats = []; // 用于存储当前显示的数据
 
 /* 处理矩阵并显示为表格 不动表头 */
 function displayMatrixBody(matrix, tableId, width = 0, editable = []) {
-    
+
     let rows = matrix.length;
     let cols = matrix[0].length;
     if (width) {
@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
     displayFriendQuest();
 
     const headers = document.querySelectorAll('th[data-index]');
-    
+
     headers.forEach(header => {
         header.addEventListener('click', () => {
             const index = parseInt(header.getAttribute('data-index'));
@@ -590,13 +590,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             }
             if (fqInfo[newMonth]) {
                 for (const id in fqInfo[newMonth].fqSend) {
-                    if (!fqInfoAll[newMonth].fqSend.hasOwnProperty(id)) { 
+                    if (!fqInfoAll[newMonth].fqSend.hasOwnProperty(id)) {
                         fqDaily[newDate].fqSend[id] = fqInfo[newMonth].fqSend[id];
                     }
                     fqInfoAll[newMonth].fqSend[id] = fqInfo[newMonth].fqSend[id];
                 }
                 for (const id in fqInfo[newMonth].fqReceive) {
-                    if (!fqInfoAll[newMonth].fqReceive.hasOwnProperty(id)) { 
+                    if (!fqInfoAll[newMonth].fqReceive.hasOwnProperty(id)) {
                         fqDaily[newDate].fqReceive[id] = fqInfo[newMonth].fqReceive[id];
                     }
                     fqInfoAll[newMonth].fqReceive[id] = fqInfo[newMonth].fqReceive[id];

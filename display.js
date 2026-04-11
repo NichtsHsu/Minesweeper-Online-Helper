@@ -77,9 +77,17 @@ function getPaginationContainer(table) {
     }
 
     const wrapper = table.parentElement.classList.contains('tableWrap') ? table.parentElement : table;
-    const host = wrapper.parentElement;
+    let host = wrapper.parentElement;
     if (!host) {
         return null;
+    }
+
+    if (!host.classList.contains('tableWrapGroup')) {
+        const group = document.createElement('div');
+        group.className = 'tableWrapGroup';
+        host.insertBefore(group, wrapper);
+        group.appendChild(wrapper);
+        host = group;
     }
 
     const tableId = table.id;
@@ -98,12 +106,12 @@ function shouldTableHavePagination(tableId) {
     if (!table) {
         return true;
     }
-    
+
     // 检查表格是否有 data-no-pagination 属性
     if (table.hasAttribute('data-no-pagination')) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -124,7 +132,7 @@ function applyPaginationToTable(tableId) {
         }
         return;
     }
-    
+
     const table = document.getElementById(tableId);
     if (!table) {
         return;
@@ -208,7 +216,7 @@ function applyPaginationToTable(tableId) {
     status.className = 'tablePageStatus';
 
     const pageStatusText1 = document.createTextNode('第 ');
-    
+
     const pageInput = document.createElement('input');
     pageInput.className = 'tablePageStatusInput';
     pageInput.type = 'number';
@@ -527,7 +535,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             gpMap[newDate] = gemsPrice;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ gemsPriceMap: gpMap }, function() {
                 displayPriceDaily();
@@ -561,7 +569,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             tpMap[newDate] = ticketPrice;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ ticketPrice: ticketPrice, ticketPriceMap: tpMap }, function() {
                 displayPriceDaily();
@@ -584,7 +592,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             equipStatsMap[newDate] = equipStats;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ equipStatsMap: equipStatsMap }, function() {
                 displayTables();
@@ -607,7 +615,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             stMap[newDate] = statistics;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ statisticsMap: stMap }, function() {
                 displayTables();
@@ -630,7 +638,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             pdMap[newDate] = personalData;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ personalDataMap: pdMap }, function() {
                 displayTables();
@@ -653,7 +661,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             peMap[newDate] = personalEco;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ personalEcoMap: peMap }, function() {
                 displayTables();
@@ -759,7 +767,7 @@ function displayTables() {
                 if (!questLevelRaw || questLevelRaw === '0') {
                     equipNew[1][5] = (questLevelMax / 2 | 0) + '-' + questLevelMax;
                 }
-                displayTextMatrix(equipNew, 'table3-4'); 
+                displayTextMatrix(equipNew, 'table3-4');
             }
             // displayMatrix(equip, 'table3-4');    // 显示装备加成
             // document.getElementById('tropNum').textContent = personalData[24][1];
@@ -783,7 +791,7 @@ function displayTables() {
                 counts: [...firstGroup[3]]
             });
 
-            var tablePrDaily = [['日期', '黄', '红', '蓝', '紫', '缟', '海', '绿', '榴', '碧', '钻', 
+            var tablePrDaily = [['日期', '黄', '红', '蓝', '紫', '缟', '海', '绿', '榴', '碧', '钻',
                 '金', '铜', '银', '镍', '钢', '铁', '钯', '钛', '锌', '铂',
                 '金币', '功勋']];
             for (let i = 0; i < pdDate.length; i++) {
@@ -1304,7 +1312,7 @@ function displayTables() {
                 ['声呐', 'O D', 'E D', 'S D', 'R D', '竞技场币', 'T A D']
             ];
             // const tablePu = document.getElementById('perfectUpgrade');
-            displayMatrix(perfectUpgrade, 'perfectUpgrade');    
+            displayMatrix(perfectUpgrade, 'perfectUpgrade');
         }
         /* 竞技场收益 */
         if (result.gemsPrice && result.ticketPrice) {
@@ -2206,7 +2214,7 @@ function displayEventQuestTally() {
                         });
                     }
                 }
-            } 
+            }
         }
     });
 }
@@ -2320,7 +2328,7 @@ function setLevelColor(arrayIni, descend = false, colorNum = 2, maxSet = Infinit
     if (thirdColor == 0) {
         thirdColor = getColorSetting('levelThirdColor');
     }
-    
+
     var array = [];
     var arrayInd = [];
     var noneFlag = 0;

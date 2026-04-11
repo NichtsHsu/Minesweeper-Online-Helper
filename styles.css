@@ -101,7 +101,7 @@
     --atv1BestBgc: #b3eb9d; /* 门票价格图例 最赚 */
     --atv1MidBgc: #ddf196; /* 门票价格图例 次赚 */
     --atv1WorstBgc: #e4c79a; /* 门票价格图例 最亏 */
-    
+
     --levelFirstColor: #63BE7B;/* 色阶 最优颜色 */
     --levelSecondColor: #FFEB84;/* 色阶 中间颜色 */
     --levelThirdColor: #F8696B;/* 色阶 最差颜色 */
@@ -899,7 +899,7 @@ input::placeholder {
     color: var(--ui-text-muted);
     line-height: 1.6;
 }
-.inputBlank {  
+.inputBlank {
     width: 60px;
     padding: 6px; /* 内边距 */
     border-radius: 5px; /* 圆角边框 */
@@ -1030,7 +1030,7 @@ option {
 
 /* 奖杯表格格式 */
 #tableTrophy tr:nth-child(4n+1) {
-    background-color: var(--tableExtraRowBgc); 
+    background-color: var(--tableExtraRowBgc);
     font-weight: bold;
 }
 .sortTable {

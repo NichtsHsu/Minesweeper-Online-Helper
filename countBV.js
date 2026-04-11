@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             var ops = 0;
                             var rows;
                             var cols;
-    
+
                             var bvMap = {};
                             var clickNum = 0;
                             var clickEffMap = [[], []]; // 存点击数和效率
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             bvMap[bvResult.join('')] = 1;
                             console.log('已完成3BV上限：', bvResult[0], ' 总3BV估计：', bvResult[1]);
                             chrome.runtime.sendMessage({ action: 'count3BVResult', bvResult: bvResult });
-                            
+
                             let game = document.querySelector("#GameBlock > table");
                             let displayTextNew = document.createElement('div'); // 创建显示bv区域
                             displayTextNew.id = 'displayText';
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const minY = Math.min(...dataY);
                             const xScale = (width - padding * 2) / (dataY.length - 1);
                             const yScale = (height - padding * 2) / (maxY - minY);
-                            
+
                             ctx.font = '16px Arial';
                             ctx.fillStyle = 'rgb(0, 0, 0)';
                             // 绘制折线

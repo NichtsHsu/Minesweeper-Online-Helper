@@ -42,11 +42,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             // 更新数据
             tpMap[newDate] = ticketPrice;
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ ticketPrice: ticketPrice });
             chrome.storage.local.set({ ticketPriceMap: tpMap });
         });
         setPopupButtonState('button2', 'success');
-    } 
+    }
 });

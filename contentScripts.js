@@ -228,7 +228,7 @@ function extractEquipStats() {
                 };
                 let baseGemBonus = '0';
                 const extraGemBonus = {};
-    
+
                 for (const item of list.children) {
                     const match = item.textContent.trim().match(/^([^:：]+)[:：]\s*(.+)$/);
                     if (!match) {
@@ -339,7 +339,7 @@ function extractStatistics() {
                 statistics[1][11] = eventPoints.textContent.replace(/ /g, "");
                 var arenaCoins = document.querySelector("#aggregate > div > div:nth-child(2) > span:nth-child(13) > span > span");
                 statistics[1][12] = arenaCoins.textContent.replace(/ /g, "");
-                
+
                 console.log(statistics);
                 chrome.runtime.sendMessage({ action: 'sendStatistics', statistics: statistics });
             }
@@ -411,9 +411,9 @@ function extractPersonalData() {
                     trophy.click(); // 20250120更新改为点击弹出
                     hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
                 }
-    
+
                 let popoverList = document.querySelectorAll("div.popover.fade.top.in, div.popover.fade.left.in");
-    
+
                 let gemList;
                 let coinList;
                 let ticketList;
@@ -435,7 +435,7 @@ function extractPersonalData() {
                         }
                     }
                 }
-                
+
                 /* 读宝石数量 */
                 if (gemList) {
                     let gems = gemList.children;
@@ -451,7 +451,7 @@ function extractPersonalData() {
                     }
                 }
                 row += 2;
-    
+
                 /* 读竞技场币数量 */
                 if (coinList) {
                     let coins = coinList.children;
@@ -467,7 +467,7 @@ function extractPersonalData() {
                     }
                 }
                 row += 3;       // 空一行
-    
+
                 /* 读竞技场门票数量 */
                 if (ticketList) {
                     let tickets = ticketList.children;
@@ -487,14 +487,14 @@ function extractPersonalData() {
                 var levelMax = 8; // 最大等级
                 if (personalData[15]) {
                     for (let l = 0; l < levelMax; l++) {
-                        if (!personalData[15][l + 1]) { 
+                        if (!personalData[15][l + 1]) {
                             console.log(personalData[15][l + 1]);
                             personalData[15][l + 1] = 0;
                         }
                     }
                 }
                 row += 12;      // 空一行
-    
+
                 /* 读资源数 */
                 let resource = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span");
                 let coinEle = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(1)");
@@ -530,7 +530,7 @@ function extractPersonalData() {
                     }
                 });
                 row += 3;       // 空一行
-    
+
                 /* 读装备信息 */
                 if (equipList) {
                     let equip = equipList.children;
@@ -549,11 +549,11 @@ function extractPersonalData() {
                     }
                 }
                 row += 4;
-    
+
                 /* 读奖杯信息 */
                 let trophyList = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > div > div.popover-content > table");
                 let trs = trophyList.querySelectorAll('tr');
-                
+
                 personalData[row][1] = parseInt(document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span").textContent, 10);
                 let rank = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > a");
                 if (rank && rank.textContent) {
@@ -581,12 +581,12 @@ function extractPersonalData() {
                     }
                 });
                 row += 5;
-                
+
                 /* 读昵称 */
                 personalData[row][0] = userName.textContent;
-    
+
                 console.log(personalData);
-    
+
                 chrome.runtime.sendMessage({ action: 'sendPersonalData', personalData: personalData });
             }
         }, t0);
@@ -654,7 +654,7 @@ function extractEconomy() {
                         }
                     }
                 }, t0)
-                
+
                 /* 模拟鼠标悬浮在button */
                 function hoverBox(button) {
                     let event = new MouseEvent("mouseover", {
@@ -730,15 +730,15 @@ function extractEventQuest() {
         eqInfo[0] = '下一任务：' + (timeNow.getHours() + 1) + ':00';
         var secret;
         let firstId = questTable.querySelector("tbody > tr:nth-child(1)").id.match(/\d+$/)[0];
-        if (secShift >= 0) { 
-            secret = (secCycle - (parseInt((+firstId + 1) / 2) + secShift) % secCycle) % secCycle; 
+        if (secShift >= 0) {
+            secret = (secCycle - (parseInt((+firstId + 1) / 2) + secShift) % secCycle) % secCycle;
         } else {
-            secret = '未知'; 
+            secret = '未知';
         }
         var nextLevel = [];
         var nextRange = [];
         let firstLevel = questTable.querySelector('tbody > tr:nth-child(1) > td:nth-child(1)').textContent.match(/\d+/)[0];
-        if (firstLevel <= levelRange[0][1]) { 
+        if (firstLevel <= levelRange[0][1]) {
             next = 3;
         } else if (firstLevel <= levelRange[1][1]) {
             next = 4;
@@ -914,10 +914,10 @@ function extractFriendQuest() {
         let tableList = document.querySelectorAll("#QuestsBlock .table.table-bordered");
 
         tableList.forEach(table => {
-            if (table.querySelector("thead > tr > th:nth-child(4)").textContent == '奖励' 
+            if (table.querySelector("thead > tr > th:nth-child(4)").textContent == '奖励'
             || table.querySelector("thead > tr > th:nth-child(4)").textContent == 'Reward') {
                 questSending = table;
-            } else if (table.querySelector("thead > tr > th:nth-child(6)").textContent == '发送自' 
+            } else if (table.querySelector("thead > tr > th:nth-child(6)").textContent == '发送自'
             || table.querySelector("thead > tr > th:nth-child(6)").textContent == 'Sent by') {
                 questReceived = table;
             } else {
@@ -987,15 +987,15 @@ function extractFriendQuestPages(maxPage) {
                     const ele = questsBlock.children[i];
                     var currentTable;
                     if (ele.classList.contains('table-bordered')) { // 检查是否为 table
-                        if (ele.querySelector("thead > tr > th:nth-child(4)").textContent == '奖励' 
+                        if (ele.querySelector("thead > tr > th:nth-child(4)").textContent == '奖励'
                         || ele.querySelector("thead > tr > th:nth-child(4)").textContent == 'Reward') {
                             ti[0][0] = i + 1;
                             currentTable = 0;
-                        } else if (ele.querySelector("thead > tr > th:nth-child(6)").textContent == '发送自' 
+                        } else if (ele.querySelector("thead > tr > th:nth-child(6)").textContent == '发送自'
                         || ele.querySelector("thead > tr > th:nth-child(6)").textContent == 'Sent by') {
                             ti[0][1] = i + 1;
                             currentTable = 1;
-                        } else if (ele.querySelector("thead > tr > th:nth-child(6)").textContent == '发送到' 
+                        } else if (ele.querySelector("thead > tr > th:nth-child(6)").textContent == '发送到'
                         || ele.querySelector("thead > tr > th:nth-child(6)").textContent == 'Sent to') {
                             ti[0][2] = i + 1;
                             currentTable = 2;

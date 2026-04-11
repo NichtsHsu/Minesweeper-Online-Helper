@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         try {
                             var board = [];
                             var mineNum = 0;
-    
+
                             const mineNum100 = document.querySelector("#top_area_mines_100").className;
                             const match100 = mineNum100.match(/top-area-num(\d+)$/);
                             if (match100) {

@@ -245,6 +245,20 @@ function wrapTableForScroll(tableElement) {
     wrapper.appendChild(tableElement);
 }
 
+function ensureTableWrapGroup(tableWrap) {
+    if (!tableWrap || !tableWrap.parentElement) {
+        return;
+    }
+    if (tableWrap.parentElement.classList.contains('tableWrapGroup')) {
+        return;
+    }
+
+    const group = document.createElement('div');
+    group.className = 'tableWrapGroup';
+    tableWrap.parentElement.insertBefore(group, tableWrap);
+    group.appendChild(tableWrap);
+}
+
 function sectionizePage(pageElement) {
     if (!pageElement || pageElement.dataset.sectionized === '1') {
         return;
@@ -299,6 +313,9 @@ function sectionizePage(pageElement) {
 
     pageElement.querySelectorAll('table').forEach(function(tableElement) {
         wrapTableForScroll(tableElement);
+    });
+    pageElement.querySelectorAll('.tableWrap').forEach(function(tableWrap) {
+        ensureTableWrapGroup(tableWrap);
     });
 
     pageElement.dataset.sectionized = '1';
@@ -373,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateMinus2 = new Date(currentDate);
     dateMinus2.setUTCDate(currentDate.getUTCDate() - 2);  // 每个月前两天划给上一个月
     switch ((dateMinus2.getUTCMonth() + 1) % 4) {
-        case 0: 
+        case 0:
             document.getElementById('nav-eventQuest').style.display = 'block';
             break;
         case 1:
@@ -591,15 +608,15 @@ function showDisassemblePriceGap(qMin, qMax) {
             ];
             var uniqueThreshold = 40; // 史诗装备质量下界
             var uniqueStats = [
-                [14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 
+                [14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000,
                     30000, 32000, 35000, 37000, 40000, 42000, 45000, 47000, 50000, 52000, 55000, 60000, 65000, 70000, 75000],
-                [30, 34, 38, 42, 46, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 
+                [30, 34, 38, 42, 46, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
                     100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 220, 240, 260, 280],
-                [60, 68, 76, 84, 92, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 
+                [60, 68, 76, 84, 92, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190,
                     200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 440, 480, 520, 560],
-                [90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 130, 134, 138, 142, 146, 
+                [90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 130, 134, 138, 142, 146,
                     150, 154, 158, 162, 166, 170, 174, 178, 182, 186, 190, 194, 198, 202, 206],
-                [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15, 
+                [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15,
                     20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 40, 40, 40, 50, 0],
                 [5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12, 13, 14,
                     15, 16, 17, 18, 19, 20, 21, 22, 24, 26, 28, 30, 33, 36, 40]
@@ -607,15 +624,15 @@ function showDisassemblePriceGap(qMin, qMax) {
             var legendThreshold = 70; // 传说装备质量下界
             // 0 -> 70%; 1 -> 71%; 以此类推
             var legendStats = [
-                [80000, 85000, 90000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 185000, 200000, 215000, 230000, 
+                [80000, 85000, 90000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 185000, 200000, 215000, 230000,
                     250000, 270000, 300000, 350000, 400000, 450000, 500000, 550000, 600000, 650000, 700000, 750000, 800000, 850000, 900000],
-                [300, 325, 350, 375, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 
+                [300, 325, 350, 375, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900,
                     1000, 1100, 1300, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4500],
-                [600, 650, 700, 750, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 
+                [600, 650, 700, 750, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800,
                     2000, 2200, 2600, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 9000],
-                [210, 213, 216, 219, 222, 225, 228, 231, 234, 237, 240, 243, 246, 249, 252, 
+                [210, 213, 216, 219, 222, 225, 228, 231, 234, 237, 240, 243, 246, 249, 252,
                     255, 258, 261, 264, 267, 270, 273, 276, 279, 282, 285, 288, 291, 294, 297],
-                [5, 5, 7, 7, 10, 10, 10, 10, 10, 10, 12, 12, 12, 12, 20, 
+                [5, 5, 7, 7, 10, 10, 10, 10, 10, 10, 12, 12, 12, 12, 20,
                     20, 40, 40, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 0],
                 [5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
                 18, 20, 24, 28, 32, 36, 40, 45, 50, 55, 60, 65, 70, 75, 85]
@@ -793,8 +810,8 @@ function showDisassemblePriceGap(qMin, qMax) {
 
 /* 历史价格 */
 document.addEventListener('DOMContentLoaded', function() {
-    var pdCategory = ['宝石', '竞技场币', 
-        '速度门票', '速度NG门票', '盲扫门票', '效率门票', '高难度门票', '随机难度门票', '硬核门票', '硬核NG门票', '耐力门票', '噩梦门票', 
+    var pdCategory = ['宝石', '竞技场币',
+        '速度门票', '速度NG门票', '盲扫门票', '效率门票', '高难度门票', '随机难度门票', '硬核门票', '硬核NG门票', '耐力门票', '噩梦门票',
         'L1门票', 'L2门票', 'L3门票', 'L4门票', 'L5门票', 'L6门票', 'L7门票', 'L8门票', '装备碎片'];
     const pds = document.getElementById('priceDailySelect');
     for (let i = 0; i < pdCategory.length; i++) {
@@ -976,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentDate = new Date();
             const newDate = currentDate.getUTCFullYear() + String(currentDate.getUTCMonth() + 1).padStart(2, '0') + String(currentDate.getUTCDate()).padStart(2, '0');
             pbOfBVMap[newDate] = pbOfBV;
-            
+
             console.log('BVPB新统计', pbOfBV);
             console.log(pbOfBVMap);
             console.log('每日PB', dailyPB);
@@ -1229,7 +1246,7 @@ function generateDateCell(firstDate, startDate, endDate, data, level, type) { //
                     }
                 }
             }
-        }        
+        }
     }
     // 第二遍过刷颜色
     for (let week = 0; week < 53; week++) { // 第几周
@@ -1420,11 +1437,11 @@ function initDailyPBTooltip() { // 悬浮显示
                 updateTooltipPosition(e, dailyPBTooltip); // 浮窗位置
             }
         });
-        
+
         cell.addEventListener('mouseout', function() {
             dailyPBTooltip.style.display = 'none';
         });
-        
+
         cell.addEventListener('mousemove', function(e) {
             updateTooltipPosition(e, dailyPBTooltip);
         });
@@ -2423,14 +2440,14 @@ document.addEventListener('DOMContentLoaded', function() {
           .then(markdownText => {
             // 3. 使用 marked.js 将 Markdown 转换为 HTML
             const htmlContent = marked.parse(markdownText);
-            
+
             // 4. 将结果插入到页面中
             document.getElementById('helpMarkDown').innerHTML = htmlContent;
           })
           .catch(error => {
             // 处理错误（如文件不存在、网络问题）
             console.error('Error:', error);
-            document.getElementById('helpMarkDown').innerHTML = 
+            document.getElementById('helpMarkDown').innerHTML =
               `<p style="color: red">加载失败: ${error.message}</p>`;
           });
 });
@@ -2545,7 +2562,7 @@ function dailyTaskFriendQuest() {
             }
         }
     });
-} 
+}
 // 设置首次调度
 dailyTaskFriendQuest();
 // 监听闹钟事件
@@ -2648,7 +2665,7 @@ const themeExample = {
 };
 /* 预设主题 */
 const defaultThemes = {
-    "默认": {}, 
+    "默认": {},
     "深色": {
         "themeName": "深色",
         "introduce": "",

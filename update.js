@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updateFriendQuest5Pages();
         }
     });
-}); 
+});
 /* 刷新宝石场币 */
 function updateGems() {
     document.getElementById('flag1').textContent = 0;

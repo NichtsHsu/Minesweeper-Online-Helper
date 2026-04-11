@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             } else {
                 contactsList[friendInfo[0]] = [friendInfo[1], index];
             }
-        
+
             // 保存更新后的数据
             chrome.storage.local.set({ contactsList: contactsList });
         });
