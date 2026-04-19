@@ -1028,22 +1028,27 @@ function displayTables() {
                 eventShop[18][2] = perfectEquipDis.toFixed(2);
             }
             displayMatrix(eventShop, 'tableEventShop');
-            var tableEs = document.getElementById('tableEventShop');
-            tableEs.rows[1].cells[0].style.backgroundColor = "#EAC476"; // 功勋标题颜色
-            tableEs.rows[2].cells[0].style.backgroundColor = "#B2D6B2"; // 宝石标题颜色
-            for (let i = 0; i < 3; i++) {
-                tableEs.rows[i + 3].cells[0].style.backgroundColor = "#A5CBE3"; // 门票包标题颜色
-            }
-            for (let i = 0; i < 6; i++) {
-                tableEs.rows[i + 6].cells[0].style.backgroundColor = "#D689ED";  // 史诗装备标题颜色
-                tableEs.rows[i + 12].cells[0].style.backgroundColor = "#FFA26C"; // 传说装备标题颜色
-            }
-            tableEs.rows[18].cells[0].style.backgroundColor = "#C83C3C"; // 完美装备标题颜色
-            var rates = eventShop.slice(1).map(row => row[row.length - 1]);
-            var levelColor = setLevelColor(rates, 1, 2); // 根据价值设置背景色
-            for (let i = 1; i < eventShop.length; i++) {
-                tableEs.rows[i].cells[2].style.backgroundColor = levelColor[i - 1];
-            }
+            var applyEventShopColor = function() {
+                var tableEs = document.getElementById('tableEventShop');
+                if (!tableEs) return;
+                tableEs.rows[1].cells[0].style.backgroundColor = "#EAC476"; // 功勋标题颜色
+                tableEs.rows[2].cells[0].style.backgroundColor = "#B2D6B2"; // 宝石标题颜色
+                for (let i = 0; i < 3; i++) {
+                    tableEs.rows[i + 3].cells[0].style.backgroundColor = "#A5CBE3"; // 门票包标题颜色
+                }
+                for (let i = 0; i < 6; i++) {
+                    tableEs.rows[i + 6].cells[0].style.backgroundColor = "#D689ED";  // 史诗装备标题颜色
+                    tableEs.rows[i + 12].cells[0].style.backgroundColor = "#FFA26C"; // 传说装备标题颜色
+                }
+                tableEs.rows[18].cells[0].style.backgroundColor = "#C83C3C"; // 完美装备标题颜色
+                var rates = eventShop.slice(1).map(row => row[row.length - 1]);
+                var levelColor = setLevelColor(rates, 1, 2); // 根据价值设置背景色
+                for (let i = 1; i < eventShop.length; i++) {
+                    tableEs.rows[i].cells[2].style.backgroundColor = levelColor[i - 1];
+                }
+            };
+            applyEventShopColor();
+            if (tableRenderCache['tableEventShop']) tableRenderCache['tableEventShop'].colorFn = applyEventShopColor;
             // 完美线
             var epDiscount = Number(result.epDiscount) || 0;
             if (epDiscount < 0) epDiscount = 0;
@@ -1297,11 +1302,16 @@ function displayTables() {
                 // chrome.storage.local.set({ perfectValue: perfect });
                 var levelColorPerfect1 = setLevelColor(perfect[1].slice(1));
                 var levelColorPerfect2 = setLevelColor(perfect[4].slice(1));
-                const tablePerfect = document.getElementById('table4');
-                for (let i = 1; i <= tm; i++) {
-                    tablePerfect.rows[1].cells[i].style.backgroundColor = levelColorPerfect1[i - 1];
-                    tablePerfect.rows[4].cells[i].style.backgroundColor = levelColorPerfect2[i - 1];
-                }
+                const applyTable4Color = function() {
+                    const tablePerfect = document.getElementById('table4');
+                    if (!tablePerfect) return;
+                    for (let i = 1; i <= tm; i++) {
+                        tablePerfect.rows[1].cells[i].style.backgroundColor = levelColorPerfect1[i - 1];
+                        tablePerfect.rows[4].cells[i].style.backgroundColor = levelColorPerfect2[i - 1];
+                    }
+                };
+                applyTable4Color();
+                if (tableRenderCache['table4']) tableRenderCache['table4'].colorFn = applyTable4Color;
             }
             var perfectUpgrade = [
                 ['', '经验', '金币', '宝石', '竞技场门票', '特殊加成', '碎片'],
