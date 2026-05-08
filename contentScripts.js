@@ -190,8 +190,8 @@ function extractEquipStats() {
     var equipStats = [
         ['经验', '金币', '竞技场门票', '每日任务', '赛季任务', '任务等级', '竞技场币', '活跃度', '活动物品', '精英任务'],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ['黄玉', '红宝石', '蓝宝石', '紫水晶', '缟玛瑙', '海蓝宝石', '祖母绿', '石榴石', '碧玉'],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ['黄玉', '红宝石', '蓝宝石', '紫水晶', '缟玛瑙', '海蓝宝石', '祖母绿', '石榴石', '碧玉', '钻石'],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ];
     var t0 = 100;
     try {
@@ -224,7 +224,8 @@ function extractEquipStats() {
                     '海蓝宝石': 5,
                     '祖母绿': 6,
                     '石榴石': 7,
-                    '碧玉': 8
+                    '碧玉': 8,
+                    '钻石': 9
                 };
                 let baseGemBonus = '0';
                 const extraGemBonus = {};
@@ -248,9 +249,20 @@ function extractEquipStats() {
 
                 for (const gemName in gemMap) {
                     const gemIdx = gemMap[gemName];
-                    equipStats[3][gemIdx] = baseGemBonus;
-                    if (extraGemBonus[gemName]) {
-                        equipStats[3][gemIdx] = mergeGemBonus(baseGemBonus, extraGemBonus[gemName]);
+                    if (gemName === '钻石') {
+                        // 钻石显示掉落概率（如 "5%"），与其他宝石的倍率加成体系独立
+                        equipStats[3][gemIdx] = extraGemBonus[gemName] || '0%';
+                    } else {
+                        equipStats[3][gemIdx] = baseGemBonus;
+                        if (extraGemBonus[gemName]) {
+                            if (extraGemBonus[gemName].startsWith('+')) {
+                                // 旧格式：相对加成，叠加到基础宝石加成
+                                equipStats[3][gemIdx] = mergeGemBonus(baseGemBonus, extraGemBonus[gemName]);
+                            } else {
+                                // 新格式：绝对值，直接使用
+                                equipStats[3][gemIdx] = extraGemBonus[gemName];
+                            }
+                        }
                     }
                 }
 
