@@ -675,6 +675,61 @@ document.addEventListener('DOMContentLoaded', function() {
     displayTables();
 });
 
+function buildWeightedArenaTicketMatrix(ticketPrice) {
+    if (!Array.isArray(ticketPrice) || ticketPrice.length < 2 || !Array.isArray(ticketPrice[0])) {
+        return ticketPrice;
+    }
+
+    const typeWeights = {
+        '速度': 0.16,
+        '速度NG': 0.12,
+        '盲扫': 0.04,
+        '效率': 0.12,
+        '高难度': 0.12,
+        '随机难度': 0.16,
+        '硬核': 0.10,
+        '硬核NG': 0.10,
+        '耐力': 0.04,
+        '噩梦': 0.04
+    };
+
+    const matrix = ticketPrice.map((row) => Array.isArray(row) ? row.slice() : [row]);
+    const levelCount = Math.max(0, (matrix[0]?.length || 0) - 1);
+    if (levelCount <= 0) {
+        return matrix;
+    }
+
+    const weightedAvgRow = ['加权均价'];
+    for (let level = 1; level <= levelCount; level++) {
+        let weightedSum = 0;
+        let totalWeight = 0;
+
+        for (let typeIndex = 1; typeIndex < matrix.length; typeIndex++) {
+            const typeName = String(matrix[typeIndex][0] || '').trim();
+            const weight = typeWeights[typeName];
+            if (!weight) {
+                continue;
+            }
+            const rawValue = String(matrix[typeIndex][level] ?? '').replace(/\s+/g, '');
+            const value = Number(rawValue);
+            if (!Number.isFinite(value)) {
+                continue;
+            }
+            weightedSum += value * weight;
+            totalWeight += weight;
+        }
+
+        if (totalWeight > 0) {
+            weightedAvgRow.push((weightedSum / totalWeight).toFixed(2));
+        } else {
+            weightedAvgRow.push('0');
+        }
+    }
+
+    matrix.push(weightedAvgRow);
+    return matrix;
+}
+
 /* 页面显示 */
 function displayTables() {
     var gemsPrice;
@@ -707,7 +762,7 @@ function displayTables() {
         if (result.ticketPrice) {
             ticketPrice = result.ticketPrice;
             console.log('竞技场门票价格:', ticketPrice);
-            displayMatrix(ticketPrice, 'table2');
+            displayMatrix(buildWeightedArenaTicketMatrix(ticketPrice), 'table2');
         }
         /* 游戏数据 */
         if (result.statistics) {
