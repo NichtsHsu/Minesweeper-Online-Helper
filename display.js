@@ -730,6 +730,52 @@ function buildWeightedArenaTicketMatrix(ticketPrice) {
     return matrix;
 }
 
+function reorderEconomyMatrix(matrix) {
+    if (!Array.isArray(matrix) || matrix.length < 2 || !Array.isArray(matrix[0]) || !Array.isArray(matrix[1])) {
+        return matrix;
+    }
+
+    const sourceHeaders = matrix[0];
+    const sourceValues = matrix[1];
+    const preferredHeaders = ['总财产', '装备', '天赋', '天赋点数', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币'];
+    const sourceIndexMap = {};
+    for (let i = 0; i < sourceHeaders.length; i++) {
+        sourceIndexMap[sourceHeaders[i]] = i;
+    }
+
+    const reorderedHeaders = [];
+    const reorderedValues = [];
+
+    for (let i = 0; i < preferredHeaders.length; i++) {
+        const header = preferredHeaders[i];
+        if (sourceIndexMap[header] !== undefined) {
+            const idx = sourceIndexMap[header];
+            reorderedHeaders.push(header);
+            reorderedValues.push(sourceValues[idx] ?? '0');
+        }
+    }
+
+    for (let i = 0; i < sourceHeaders.length; i++) {
+        const header = sourceHeaders[i];
+        if (!header || header === '今日增量') {
+            continue;
+        }
+        if (reorderedHeaders.indexOf(header) >= 0) {
+            continue;
+        }
+        reorderedHeaders.push(header);
+        reorderedValues.push(sourceValues[i] ?? '0');
+    }
+
+    if (sourceIndexMap['今日增量'] !== undefined) {
+        const growthIdx = sourceIndexMap['今日增量'];
+        reorderedHeaders.push('今日增量');
+        reorderedValues.push(sourceValues[growthIdx] ?? '0');
+    }
+
+    return [reorderedHeaders, reorderedValues];
+}
+
 /* 页面显示 */
 function displayTables() {
     var gemsPrice;
@@ -944,7 +990,7 @@ function displayTables() {
         }
         /* 财产估值 */
         if (result.personalEco) {
-            personalEco = result.personalEco;
+            personalEco = reorderEconomyMatrix(result.personalEco);
             console.log('财产估值:', personalEco);
             displayMatrix(personalEco, 'tablePe');
         }
@@ -955,19 +1001,41 @@ function displayTables() {
             const dates = Object.keys(peMap);
             if (dates.length > 1) {
                 dates.sort((a, b) => Number(b) - Number(a));
-                var peDaily = [['日期', '总财产', '装备', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币']];
+                const latestEco = reorderEconomyMatrix(peMap[dates[0]] || result.personalEco || []);
+                const ecoHeaders = Array.isArray(latestEco[0]) ? latestEco[0] : [];
+                const diffHeaders = ecoHeaders.filter((h) => h && h !== '今日增量');
+                const peDailyHeader = ['日期', ...diffHeaders];
+                var peDaily = [peDailyHeader.length > 1 ? peDailyHeader : ['日期', '总财产', '装备', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币']];
                 for (let i = 1; i < dates.length; i++) {
-                    const pe1 = peMap[dates[i-1]];
-                    const pe2 = peMap[dates[i]];
+                    const pe1 = reorderEconomyMatrix(peMap[dates[i-1]]);
+                    const pe2 = reorderEconomyMatrix(peMap[dates[i]]);
                     var row = [dates[i-1].replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")];
-                    let j = 0;
-                    if (pe1[1][11]) {
-                        row.push(pe1[1][11]);
-                        j = 1;
+                    const header1 = Array.isArray(pe1[0]) ? pe1[0] : [];
+                    const header2 = Array.isArray(pe2[0]) ? pe2[0] : [];
+                    const row1 = Array.isArray(pe1[1]) ? pe1[1] : [];
+                    const row2 = Array.isArray(pe2[1]) ? pe2[1] : [];
+                    const indexMap1 = {};
+                    const indexMap2 = {};
+                    for (let j = 0; j < header1.length; j++) {
+                        indexMap1[header1[j]] = j;
                     }
-                    for (; j < 11; j++) {
-                        var peData1 = pe1[1][j].toString();
-                        var peData2 = pe2[1][j].toString();
+                    for (let j = 0; j < header2.length; j++) {
+                        indexMap2[header2[j]] = j;
+                    }
+
+                    const growthIndex1 = indexMap1['今日增量'];
+                    let startHeaderIndex = 0;
+                    if (growthIndex1 !== undefined && row1[growthIndex1]) {
+                        row.push(row1[growthIndex1]);
+                        startHeaderIndex = 1;
+                    }
+
+                    for (let j = startHeaderIndex; j < diffHeaders.length; j++) {
+                        const fieldName = diffHeaders[j];
+                        const idx1 = indexMap1[fieldName];
+                        const idx2 = indexMap2[fieldName];
+                        var peData1 = (idx1 !== undefined ? row1[idx1] : '0').toString();
+                        var peData2 = (idx2 !== undefined ? row2[idx2] : '0').toString();
                         var num1 = parseFloat(peData1.replace(/[MK]/, ''));
                         var num2 = parseFloat(peData2.replace(/[MK]/, ''));
                         if (peData1.endsWith('M')) {

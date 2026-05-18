@@ -622,8 +622,8 @@ function extractPersonalData() {
 /* ===== 财产估值提取 ===== */
 function extractEconomy() {
     var personalEco = [
-        ['总财产', '装备', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币', '今日增量'],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ['总财产', '装备', '金币', '宝石', '功勋点', '活动物品', '竞技场门票', '仓库', '装备碎片', '竞技场币', '代币', '天赋', '天赋点数', '今日增量'],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ];
     var t0 = 100;
     try {
@@ -643,7 +643,7 @@ function extractEconomy() {
                         let dataDisp = myRow.querySelector("td:nth-child(3) > div > div.popover-content");
                         var data = dataDisp.innerHTML.split(/<[^>]*>/g);
                         for (let i = 0; i < data.length; i++) {
-                            for (let j = 1; j <= personalEco[0].length; j++) {
+                            for (let j = 1; j < personalEco[0].length; j++) {
                                 if (data[i].includes(personalEco[0][j] + '：')) {
                                     var match = data[i].match(/：(.*)/);
                                     personalEco[1][j] = match[1];
@@ -660,7 +660,7 @@ function extractEconomy() {
                         }
                         let growth = document.querySelector("#stat_table_body > tr.stat-my-row > td:nth-child(3) > div > div.tooltip-inner");
                         if (growth) {
-                            personalEco[1][11] = growth.textContent;
+                            personalEco[1][personalEco[0].length - 1] = growth.textContent;
                             console.log(personalEco);
                             chrome.runtime.sendMessage({ action: 'personalEconomy', personalEco: personalEco });
                         }
