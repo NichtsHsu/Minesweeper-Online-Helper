@@ -402,22 +402,28 @@ function extractPersonalData() {
             let userName = document.querySelector("#PlayerBlock > h2 > div.pull-left > span");
             if (userName) {
                 clearInterval(startPdQuery);
-                let gem = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(3)");
-                if (gem) {
-                    hoverBox(gem);      // 鼠标悬浮展开宝石数量
-                }
-                let coin = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(4)");
-                if (coin) {
-                    hoverBox(coin);     // 鼠标悬浮展开竞技场币数量
-                }
-                let ticket = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(5)");
-                if (ticket) {
-                    hoverBox(ticket);   // 鼠标悬浮展开竞技场门票数量
-                }
-                let equipment = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(6) > div.col-xs-8.form-text > table > tbody > tr > td:nth-last-child(1) > span > span");
-                if (equipment) {
-                    hoverBox(equipment);   // 鼠标悬浮展开装备信息
-                }
+                let assetIndex = 14;
+                let infos = document.querySelectorAll("#PlayerBlock > div:nth-child(3) > div");
+                infos.forEach((div, index) => {
+                    let label = div.querySelector("div.control-label");
+                    if (label && label.textContent.includes("资源")) {
+                        assetIndex = index + 1;
+                    }
+                });
+                let userAssets = document.querySelectorAll(`#PlayerBlock > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span > span > span`);
+                userAssets.forEach((span) => {
+                    if (span.querySelector("img")) {
+                        if (span.querySelector("img").className.includes('gem') ||
+                            span.querySelector("img").className.includes('arena')
+                        ) {
+                            hoverBox(span);
+                        }
+                    } else if (span.querySelector("i")) {
+                        if (span.querySelector("i").className.includes('ticket')) {
+                            hoverBox(span);
+                        }
+                    }
+                });
                 let trophy = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span");
                 if (trophy) {
                     trophy.click(); // 20250120更新改为点击弹出
@@ -449,9 +455,15 @@ function extractPersonalData() {
                 }
 
                 /* 读宝石数量 */
+                let totalGem = null;
                 if (gemList) {
                     let gems = gemList.children;
                     for (let i = 0; i < gems.length; i++) {
+                        let total = gems[i].querySelector("td.gray");
+                        if (total) {
+                            totalGem = total.textContent.replace(/\D/g, "");
+                            continue;
+                        }
                         let gemPrice = gems[i].querySelector("td.text-right");
                         let gemName = gems[i].querySelector("td:nth-child(3)");
                         for (let j = 0; j < 10; j++) {
@@ -465,9 +477,15 @@ function extractPersonalData() {
                 row += 2;
 
                 /* 读竞技场币数量 */
+                let totalAc = null;
                 if (coinList) {
                     let coins = coinList.children;
                     for (let i = 0; i < coins.length; i++) {
+                        let total = coins[i].querySelector("td.gray");
+                        if (total) {
+                            totalAc = total.textContent.replace(/\D/g, "");
+                            continue;
+                        }
                         let coinPrice = coins[i].querySelector("td.text-right");
                         let coinName = coins[i].querySelector("td:nth-child(3)");
                         for (let j = 0; j < 10; j++) {
@@ -508,27 +526,34 @@ function extractPersonalData() {
                 row += 12;      // 空一行
 
                 /* 读资源数 */
-                let resource = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span");
-                let coinEle = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(7) > div.col-xs-8.form-text > span > span:nth-child(1)");
-                personalData[row + 1][0] = coinEle.getAttribute('data-original-title').replace(/\s+/g, '');
-                const spans = resource.querySelectorAll("span");
-                spans.forEach((span) => {
+                let resources = document.querySelectorAll(`#PlayerBlock > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span:nth-child(1) > span`);
+                resources.forEach((span) => {
                     if (span.querySelector("img")) {
-                        if (span.querySelector("img").className.includes('gem')) {
-                            personalData[row + 1][1] = span.querySelector("span").textContent.replace(/\s+/g, '');
+                        if (span.querySelector("img").className.includes('coin') && !span.querySelector("img").className.includes('arena')) {
+                            personalData[row + 1][0] = span.querySelector("span").getAttribute("data-original-title").replace(/\s+/g, '');
+                        } else if (span.querySelector("img").className.includes('gem')) {
+                            if (totalGem) {
+                                personalData[row + 1][1] = totalGem;
+                            } else {
+                                personalData[row + 1][1] = span.querySelector("span").textContent.replace(/\s+/g, '');
+                            }
                         } else if (span.querySelector("img").className.includes('arena')) {
-                            personalData[row + 1][2] = span.querySelector("span").textContent.replace(/\s+/g, '');
+                            if (totalAc) {
+                                personalData[row + 1][2] = totalAc
+                            } else {
+                                personalData[row + 1][2] = span.querySelector("span").textContent.replace(/\s+/g, '');
+                            }
                         } else if (span.querySelector("img").className.includes('eq')) {
                             personalData[row + 1][4] = span.querySelector("span").textContent.replace(/\s+/g, '');
                         } else if (span.querySelector("img").className.includes('parts')) {
                             personalData[row + 1][5] = span.textContent.replace(/\s+/g, '');
+                        } else if (span.querySelector("img").className.includes('hp')) {
+                            personalData[row + 1][6] = span.querySelector("span").getAttribute("data-original-title").replace(/\s+/g, '');
                         }
                     } else if (span.querySelector("i")) {
                         personalData[row + 1][3] = span.querySelector("span").textContent.replace(/\s+/g, '');
                     }
                 });
-                let hp = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(5) > div.col-xs-8.form-text > span:nth-child(2)");
-                personalData[row + 1][6] = hp.textContent.replace(/\s+/g, '');
                 document.querySelectorAll('.form-group.form-group-player-info').forEach(line => {
                     let lineTitle = line.querySelector('.col-xs-4.control-label');
                     if (lineTitle && (lineTitle.textContent.includes('赛季') || lineTitle.textContent.includes('Season'))) {
