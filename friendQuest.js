@@ -1,6 +1,10 @@
 /* 页面显示 */
 function displayFriendQuest() {
     chrome.storage.local.get(['friendQuestInfo', 'activityMap', 'friendQuestDaily', 'contactsList'], function(result) {
+        const toFiniteNumber = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+        };
         let fqInfoAll = result.friendQuestInfo || {}; // 确保存在数据，防止为 undefined
         let contactsList = result.contactsList || {};
         // 获取当前月份
@@ -63,9 +67,10 @@ function displayFriendQuest() {
             const dates = Object.keys(fqDaily).sort().reverse();
             // 按顺序遍历
             dates.forEach(date => {
-                if (date.includes(newMonth) && (date.slice(-2) == '04' || typeof activityMap[date] === 'number')) {
-                    if (activityMap[date]) {
-                        sumActivity += Number(activityMap[date]);
+                const activityValue = toFiniteNumber(activityMap[date]);
+                if (date.includes(newMonth) && (date.slice(-2) == '04' || activityValue !== null)) {
+                    if (activityValue !== null) {
+                        sumActivity += activityValue;
                     }
                     let countS = Object.keys(fqDaily[date].fqSend).length; // 发任务总数
                     let dailyLevelS = 0; // 发任务总等级
@@ -91,6 +96,7 @@ function displayFriendQuest() {
                     if (date.slice(-2) == '04') {
                         activityMap[date] = dailyLevelS;
                     }
+                    const displayActivity = toFiniteNumber(activityMap[date]);
                     Object.values(fqDaily[date].fqReceive).forEach(entry => {
                         const lrMatch = entry[0].match(/L(\d+)?(E)?/); // 提取 L 后面的数字和 E
                         var levelR;
@@ -105,9 +111,10 @@ function displayFriendQuest() {
                         // 累加等级
                         dailyLevelR += levelR;
                     });
-                    let changeRate = dailyLevelS / activityMap[date];
+                    let changeRate = displayActivity ? (dailyLevelS / displayActivity) : Infinity;
                     let rsRate = dailyLevelR / dailyLevelS;
-                    const daylyRow = [date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"), activityMap[date], countS, eNum, dailyLevelS, changeRate.toFixed(3), countR, dailyLevelR, rsRate.toFixed(3)];
+                    const changeRateText = Number.isFinite(changeRate) ? changeRate.toFixed(3) : 'Inf';
+                    const daylyRow = [date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"), displayActivity ?? '-', countS, eNum, dailyLevelS, changeRateText, countR, dailyLevelR, rsRate.toFixed(3)];
                     fqDailyMap.push(daylyRow);
                 }
             });
@@ -518,8 +525,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('fqShowContact').style.display = "inline";
     // 手动修改昨日活跃度
     document.getElementById('updateLastAct').addEventListener('click', function () {
-        const lastActNew = document.getElementById('lastActNew').value;
-        if (lastActNew) {
+        const lastActRaw = document.getElementById('lastActNew').value.trim();
+        const lastActNew = Number(lastActRaw);
+        if (lastActRaw && Number.isFinite(lastActNew) && lastActNew >= 0) {
             chrome.storage.local.get(['activityMap'], function(result) {
                 let activityMap = result.activityMap || {};
                 const currentDate = new Date();
