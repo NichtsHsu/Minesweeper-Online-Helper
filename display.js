@@ -1174,6 +1174,8 @@ function displayTables() {
             var epDiscount = Number(result.epDiscount) || 0;
             if (epDiscount < 0) epDiscount = 0;
             if (epDiscount > 100) epDiscount = 100;
+            var extraEp = Number(result.extraEp) || 0;
+            if (extraEp < 0) extraEp = 0;
             var discountMul = (100 - epDiscount) / 100; // 折扣系数
             var perfectLine = [
                 ['今日/累计', 0, 0],
@@ -1213,13 +1215,14 @@ function displayTables() {
                 return Number.isFinite(parsed) ? parsed : NaN;
             };
             const currentEpNum = normalizeNumber(personalData?.[18]?.[7]);
+            const effectiveCurrentEpNum = Number.isFinite(currentEpNum) ? currentEpNum + extraEp : NaN;
             if (stDaily[1] && stDaily[1][12]) {
                 perfectLine[0][1] = stDaily[1][12];
             } else {
                 perfectLine[0][1] = '暂无数据';
             }
-            if (Number.isFinite(currentEpNum)) {
-                perfectLine[0][2] = currentEpNum;
+            if (Number.isFinite(effectiveCurrentEpNum)) {
+                perfectLine[0][2] = parseFloat(effectiveCurrentEpNum.toFixed(0));
             } else {
                 perfectLine[0][2] = '暂无数据';
             }
@@ -1231,8 +1234,8 @@ function displayTables() {
                 perfectLine[i][2] = parseFloat(avg.toFixed(0));
                 var total = epTarget / (dayNum - 3) * Math.max(currentDate - 3, 0);
                 perfectLine[i][3] = parseFloat(total.toFixed(0));
-                if (Number.isFinite(currentEpNum)) {
-                    var left = (epTarget - currentEpNum) / Math.min(dayNum - currentDate + 1, dayNum - 3);
+                if (Number.isFinite(effectiveCurrentEpNum)) {
+                    var left = (epTarget - effectiveCurrentEpNum) / Math.min(dayNum - currentDate + 1, dayNum - 3);
                     perfectLine[i][4] = parseFloat(Math.max(0, left).toFixed(0));
                 } else {
                     perfectLine[i][4] = '';
@@ -1247,8 +1250,8 @@ function displayTables() {
             perfectLine[16][2] = parseFloat(avg.toFixed(0));
             var total = customTarget / (dayNum - 3) * Math.max(currentDate - 3, 0);
             perfectLine[16][3] = parseFloat(total.toFixed(0));
-            if (Number.isFinite(currentEpNum)) {
-                var left = (customTarget - currentEpNum) / Math.min(dayNum - currentDate, dayNum - 3);
+            if (Number.isFinite(effectiveCurrentEpNum)) {
+                var left = (customTarget - effectiveCurrentEpNum) / Math.min(dayNum - currentDate, dayNum - 3);
                 perfectLine[16][4] = parseFloat(Math.max(0, left).toFixed(0));
             } else {
                 perfectLine[16][4] = '';
@@ -1395,6 +1398,45 @@ function displayTables() {
                     epDiscountInput.addEventListener('focus', function() {
                         if (epDiscountInput.value === '') {
                             epDiscountInput.value = epDiscountInput.placeholder;
+                        }
+                    });
+                }
+            }
+
+            const extraEpInput = document.getElementById('extraEpInput');
+            if (extraEpInput) {
+                if (document.activeElement !== extraEpInput) {
+                    extraEpInput.value = '';
+                }
+                extraEpInput.placeholder = extraEp;
+                if (!extraEpInput.dataset.bound) {
+                    extraEpInput.dataset.bound = '1';
+                    const saveExtraEp = function() {
+                        let val = parseFloat(extraEpInput.value);
+                        if (isNaN(val) || val < 0) val = 0;
+                        val = parseFloat(val.toFixed(0));
+                        extraEpInput.value = val;
+                        extraEpInput.placeholder = val;
+                        chrome.storage.local.set({ extraEp: val }, function() {
+                            displayTables();
+                        });
+                    };
+                    extraEpInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveExtraEp();
+                            extraEpInput.blur();
+                        }
+                    });
+                    extraEpInput.addEventListener('blur', function() {
+                        if (extraEpInput.value !== '') {
+                            saveExtraEp();
+                        }
+                        extraEpInput.value = '';
+                    });
+                    extraEpInput.addEventListener('focus', function() {
+                        if (extraEpInput.value === '') {
+                            extraEpInput.value = extraEpInput.placeholder;
                         }
                     });
                 }

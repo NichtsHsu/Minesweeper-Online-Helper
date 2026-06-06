@@ -196,11 +196,41 @@ function clearSettingValueInputs() {
     });
 }
 
+function setButtonStateSilently(buttonId, state) {
+    const button = document.getElementById(buttonId);
+    if (!button) {
+        return;
+    }
+
+    const uiStateClasses = [
+        'ui-btn-disabled',
+        'ui-btn-ready',
+        'ui-btn-loading',
+        'ui-btn-success',
+        'ui-btn-error',
+        'ui-btn-idle'
+    ];
+
+    uiStateClasses.forEach(function(cls) {
+        button.classList.remove(cls);
+    });
+
+    const nextState = state || 'idle';
+    if (nextState === 'disabled') {
+        button.classList.add('ui-btn-disabled');
+        button.disabled = true;
+        return;
+    }
+
+    button.disabled = false;
+    button.classList.add('ui-btn-' + nextState);
+}
+
 function setSettingActionFeedback(buttonId, state, message) {
-    if (typeof window.setButtonState === 'function' && buttonId) {
-        window.setButtonState(buttonId, state);
+    if (buttonId) {
+        setButtonStateSilently(buttonId, state);
         setTimeout(function() {
-            window.setButtonState(buttonId, 'idle');
+            setButtonStateSilently(buttonId, 'idle');
         }, 2200);
     }
 
