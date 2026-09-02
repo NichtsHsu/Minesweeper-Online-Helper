@@ -10,6 +10,23 @@ if (!window.__refreshTabMap) {
     window.__refreshTabMap = {};
 }
 
+function getValidatedPid() {
+    const pIdElement = document.getElementById('pIdNow');
+    const rawPid = pIdElement ? pIdElement.innerText.trim() : '';
+    const pId = rawPid.match(/\d+/)?.[0] || '';
+
+    if (!pId) {
+        window.alert('请先设置用户 UID（个人主页网址中的数字）');
+        return null;
+    }
+
+    if (pIdElement && pIdElement.innerText.trim() !== pId) {
+        pIdElement.innerText = pId;
+    }
+
+    return pId;
+}
+
 function registerRefreshTab(taskKey, tabId) {
     if (!taskKey || typeof tabId !== 'number') {
         return;
@@ -34,9 +51,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('update').addEventListener('click', function () {
         // const button = document.getElementById('update');
         // button.style.backgroundColor = '#ff9f18';   // 对应按钮变为橙色，表示运行中
-        const pId = document.getElementById('pIdNow').innerText;
+        const pId = getValidatedPid();
         if (!pId) {
-            window.alert('请先设置用户uID（个人主页网址中的数字）');
             return;
         }
         updateGems();
@@ -176,7 +192,10 @@ function updateEquipmentStats() {
 }
 /* 刷新游戏数据 */
 function updateStatistics() {
-    const pId = document.getElementById('pIdNow').innerText;
+    const pId = getValidatedPid();
+    if (!pId) {
+        return;
+    }
     document.getElementById('flag5').textContent = 0;
     setMainButtonState('updateStatistic', 'loading');
     const u1 = 'https://minesweeper.online/cn/statistics/' + pId;
@@ -212,7 +231,10 @@ function updateStatistics() {
 }
 /* 刷新个人数据 */
 function updatePersonalData() {
-    const pId = document.getElementById('pIdNow').innerText;
+    const pId = getValidatedPid();
+    if (!pId) {
+        return;
+    }
     document.getElementById('flag3').textContent = 0;
     setMainButtonState('updatePersonalData', 'loading');
     const u2 = 'https://minesweeper.online/cn/player/' + pId;
@@ -321,9 +343,12 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
     const button = document.getElementById('updateWheel');
     button.addEventListener('click', function () {
+        const pId = getValidatedPid();
+        if (!pId) {
+            return;
+        }
         setMainButtonState('updateWheel', 'loading');
         document.getElementById('flagWheel').textContent = 0;
-        const pId = document.getElementById('pIdNow').innerText;
         document.getElementById('flag3').textContent = 0;
         const uw = 'https://minesweeper.online/cn/quests/' + pId;
         chrome.tabs.create({ url: uw, active: true }, function (tab) {

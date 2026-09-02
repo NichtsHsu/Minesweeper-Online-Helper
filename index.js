@@ -159,41 +159,10 @@ function showPage(pageId) {
     // 为对应导航栏链接添加活动样式
     document.getElementById('nav-' + pageId).classList.add('active');
 
-    // 设置页参数项统一使用 placeholder 展示当前值，避免残留输入遮住 placeholder。
-    if (pageId === 'setting') {
-        clearSettingValueInputs();
-    }
-
     // 每次切换选项卡时刷新该页面表格分页，保证配置变更后立即生效。
     if (typeof window.refreshPageTablePagination === 'function') {
         window.refreshPageTablePagination(pageId);
     }
-}
-
-function clearSettingValueInputs() {
-    const ids = [
-        'act2ep',
-        'ep2mc',
-        'hp2mc',
-        'spArenaCoef',
-        'spngArenaCoef',
-        'nfArenaCoef',
-        'effArenaCoef',
-        'hdArenaCoef',
-        'rdArenaCoef',
-        'hcArenaCoef',
-        'hcngArenaCoef',
-        'edArenaCoef',
-        'nmArenaCoef',
-        'tablePageSize'
-    ];
-
-    ids.forEach(function(id) {
-        const input = document.getElementById(id);
-        if (input) {
-            input.value = '';
-        }
-    });
 }
 
 function setButtonStateSilently(buttonId, state) {
@@ -1780,24 +1749,51 @@ function cloneDefaultAutoUpdate() {
     });
 }
 
-function applySettingInputsFromConfig(configurableCoef, tablePageSize) {
-    document.getElementById('act2ep').placeholder = configurableCoef[0];
-    document.getElementById('ep2mc').placeholder = configurableCoef[1];
-    document.getElementById('spArenaCoef').placeholder = configurableCoef[2];
-    document.getElementById('spngArenaCoef').placeholder = configurableCoef[3];
-    document.getElementById('nfArenaCoef').placeholder = configurableCoef[4];
-    document.getElementById('effArenaCoef').placeholder = configurableCoef[5];
-    document.getElementById('hdArenaCoef').placeholder = configurableCoef[6];
-    document.getElementById('rdArenaCoef').placeholder = configurableCoef[7];
-    document.getElementById('hcArenaCoef').placeholder = configurableCoef[8];
-    document.getElementById('hcngArenaCoef').placeholder = configurableCoef[9];
-    document.getElementById('edArenaCoef').placeholder = configurableCoef[10];
-    document.getElementById('nmArenaCoef').placeholder = configurableCoef[11];
-    document.getElementById('hp2mc').placeholder = configurableCoef[12];
+function resolveConfigurableCoef(configurableCoef) {
+    const rawConfigurableCoef = Array.isArray(configurableCoef) ? configurableCoef : [];
+    return DEFAULT_CONFIGURABLE_COEF.map(function(defaultValue, index) {
+        const value = rawConfigurableCoef[index];
+        return value === undefined || value === null || value === '' ? defaultValue : value;
+    });
+}
 
-    const finalPageSize = Number(tablePageSize);
-    document.getElementById('tablePageSize').placeholder =
-        Number.isFinite(finalPageSize) && finalPageSize > 0 ? String(Math.floor(finalPageSize)) : String(DEFAULT_TABLE_PAGE_SIZE);
+function applySettingInputsFromConfig(configurableCoef, tablePageSize) {
+    const inputMeta = [
+        ['act2ep', 0],
+        ['ep2mc', 1],
+        ['spArenaCoef', 2],
+        ['spngArenaCoef', 3],
+        ['nfArenaCoef', 4],
+        ['effArenaCoef', 5],
+        ['hdArenaCoef', 6],
+        ['rdArenaCoef', 7],
+        ['hcArenaCoef', 8],
+        ['hcngArenaCoef', 9],
+        ['edArenaCoef', 10],
+        ['nmArenaCoef', 11],
+        ['hp2mc', 12]
+    ];
+
+    const rawConfigurableCoef = Array.isArray(configurableCoef) ? configurableCoef : [];
+    inputMeta.forEach(function(meta) {
+        const id = meta[0];
+        const index = meta[1];
+        const input = document.getElementById(id);
+        if (!input) {
+            return;
+        }
+        const rawValue = rawConfigurableCoef[index];
+        const hasStoredValue = !(rawValue === undefined || rawValue === null || rawValue === '');
+        input.value = hasStoredValue ? String(rawValue) : '';
+        input.placeholder = String(DEFAULT_CONFIGURABLE_COEF[index]);
+    });
+
+    const tablePageSizeInput = document.getElementById('tablePageSize');
+    if (tablePageSizeInput) {
+        const finalPageSize = Number(tablePageSize);
+        tablePageSizeInput.value = Number.isFinite(finalPageSize) && finalPageSize > 0 ? String(Math.floor(finalPageSize)) : '';
+        tablePageSizeInput.placeholder = String(DEFAULT_TABLE_PAGE_SIZE);
+    }
 }
 
 function applyArenaCoefPreview(configurableCoef) {
@@ -1974,7 +1970,6 @@ function resetAllSettingsToDefault(triggerButtonId) {
         applySettingInputsFromConfig(defaultConfigurableCoef, DEFAULT_TABLE_PAGE_SIZE);
         applyArenaCoefPreview(defaultConfigurableCoef);
         applyAutoUpdateInputs(defaultAutoUpdate);
-        clearSettingValueInputs();
 
         setThemeOptions(defaultThemeMap, DEFAULT_THEME_NAME);
         applyTheme(DEFAULT_THEME_NAME);
@@ -2002,18 +1997,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const pId = result.pId;
         if (pId) {
             document.getElementById('pIdNow').innerText = pId;
-            document.getElementById('personalId').placeholder = pId;
+            document.getElementById('personalId').value = pId;
+            document.getElementById('personalId').placeholder = '请设置账号';
         } else {
+            document.getElementById('personalId').value = '';
             document.getElementById('personalId').placeholder = '请设置账号';
         }
         const rawConfigurableCoef = Array.isArray(result.configurableCoef) ? result.configurableCoef : [];
-        const configurableCoef = DEFAULT_CONFIGURABLE_COEF.map(function(defaultValue, index) {
-            const value = rawConfigurableCoef[index];
-            return value === undefined || value === null || value === '' ? defaultValue : value;
-        });
-        const tablePageSize = Number(result.tablePageSize);
-        applySettingInputsFromConfig(configurableCoef, tablePageSize);
-        clearSettingValueInputs();
+        const configurableCoef = resolveConfigurableCoef(rawConfigurableCoef);
+        applySettingInputsFromConfig(rawConfigurableCoef, result.tablePageSize);
         applyArenaCoefPreview(configurableCoef);
 
         const arenaCoefInputIds = [
@@ -2139,7 +2131,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (!isNaN(pId)) {
                 chrome.storage.local.set({ pId: pId });
                 document.getElementById('pIdNow').innerText = pId;
-                document.getElementById('personalId').placeholder = pId;
+                document.getElementById('personalId').value = pId;
+                document.getElementById('personalId').placeholder = '请设置账号';
             } else {
                 saveFailed = true;
                 saveErrorMessage = 'ID格式错误';
@@ -2151,9 +2144,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const readSettingInput = function (id, fallbackValue) {
                 const input = document.getElementById(id);
                 const rawValue = input.value.trim();
-                const nextValue = rawValue !== '' ? rawValue : (input.placeholder || String(fallbackValue));
-                input.placeholder = String(nextValue);
-                input.value = '';
+                const nextValue = rawValue !== '' ? rawValue : String(fallbackValue);
+                input.value = String(nextValue);
+                input.placeholder = String(fallbackValue);
                 return nextValue;
             };
 
@@ -2188,15 +2181,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const tablePageSizeInput = document.getElementById('tablePageSize');
-            const fallbackPageSize = Number(tablePageSizeInput.placeholder) || 10;
+            const fallbackPageSize = DEFAULT_TABLE_PAGE_SIZE;
             const rawTablePageSize = tablePageSizeInput.value || fallbackPageSize;
             let tablePageSize = Number(rawTablePageSize);
             if (!Number.isFinite(tablePageSize) || tablePageSize < 1) {
                 tablePageSize = 10;
             }
             tablePageSize = Math.min(200, Math.floor(tablePageSize));
-            tablePageSizeInput.placeholder = String(tablePageSize);
-            tablePageSizeInput.value = '';
+            tablePageSizeInput.value = String(tablePageSize);
+            tablePageSizeInput.placeholder = String(DEFAULT_TABLE_PAGE_SIZE);
             chrome.storage.local.set({ tablePageSize: tablePageSize });
             if (typeof window.setTablePageSizeSetting === 'function') {
                 window.setTablePageSizeSetting(tablePageSize);
@@ -2444,7 +2437,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (themeIn) {
                         chrome.storage.local.set({ theme: themeIn });
                     }
+                    chrome.storage.local.get(['pId', 'configurableCoef', 'tablePageSize', 'autoUpdate', 'themeMap', 'theme', 'advancedMode'], function (result) {
+                        const restoredPid = result.pId || '';
+                        const pIdNow = document.getElementById('pIdNow');
+                        const personalId = document.getElementById('personalId');
+                        if (pIdNow) {
+                            pIdNow.innerText = restoredPid;
+                        }
+                        if (personalId) {
+                            personalId.value = restoredPid;
+                            personalId.placeholder = '请设置账号';
+                        }
+
+                        const rawConfigurableCoef = Array.isArray(result.configurableCoef) ? result.configurableCoef : [];
+                        const configurableCoef = resolveConfigurableCoef(rawConfigurableCoef);
+
+                        const tablePageSize = Number(result.tablePageSize);
+                        applySettingInputsFromConfig(rawConfigurableCoef, Number.isFinite(tablePageSize) ? tablePageSize : '');
+                        applyArenaCoefPreview(configurableCoef);
+
+                        const autoUpdate = Array.isArray(result.autoUpdate) ? result.autoUpdate : cloneDefaultAutoUpdate();
+                        applyAutoUpdateInputs(autoUpdate);
+
+                        const themeMap = result.themeMap || defaultThemes;
+                        const themeName = result.theme || DEFAULT_THEME_NAME;
+                        setThemeOptions(themeMap, themeName);
+                        applyTheme(themeName);
+                        refreshThemeDependentViews();
+
+                        if (typeof window.setTablePageSizeSetting === 'function') {
+                            window.setTablePageSizeSetting(Number.isFinite(tablePageSize) ? tablePageSize : DEFAULT_TABLE_PAGE_SIZE);
+                        }
+                        if (typeof window.refreshPageTablePagination === 'function') {
+                            window.refreshPageTablePagination('setting');
+                        }
+                    });
                 });
+                const restoreInput = document.getElementById('restoreInput');
+                if (restoreInput) {
+                    restoreInput.value = '';
+                }
                 // location.reload();
                 console.log('恢复数据成功');
                 setSettingActionFeedback('restoreButton', 'success', '数据恢复完成');

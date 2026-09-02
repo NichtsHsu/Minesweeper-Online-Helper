@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (match1) {
                                 mineNum += parseInt(match1[1].slice(-1));
                             }
-                            const area = document.querySelector("#AreaBlock");
+                            const area = document.querySelector("#CellsBlock, #AreaBlock");
                             if (area) {
                                 for (const cell of area.children) {
                                     if (cell.classList.contains('cell')) {

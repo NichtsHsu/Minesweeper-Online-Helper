@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
 
                         function changeSkin() {
-                            const area = document.querySelector("#AreaBlock");
+                            const area = document.querySelector("#CellsBlock, #AreaBlock");
                             if (area) {
                                 var openNum = 0;
                                 let setArea0 = document.getElementById("setArea");

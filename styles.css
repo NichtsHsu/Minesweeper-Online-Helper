@@ -879,12 +879,20 @@ input {
     padding: 5px;
     font-size: 15px;
     border: 1px solid var(--inputBdc);
-    cursor: pointer;
+    cursor: text;
     gap: 0px;
     width: 80px;
     background-color: var(--inputBgc);
     color: var(--inputFc);
     border-radius: 8px;
+}
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    cursor: pointer;
 }
 input::placeholder {
     color: var(--inputPhFc);

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             chartEleNew.style.height = '400px';
                             displayTextNew.insertAdjacentElement('afterend', chartEleNew);
 
-                            const area = document.querySelector("#AreaBlock");
+                            const area = document.querySelector("#CellsBlock, #AreaBlock");
                             // 配置观察选项:
                             const config = { attributes: true, childList: true, subtree: true };
                             // 创建一个观察器实例并传入回调函数
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (match1) {
                                 mineNum += parseInt(match1[1].slice(-1));
                             }
-                            const area = document.querySelector("#AreaBlock");
+                            const area = document.querySelector("#CellsBlock, #AreaBlock");
                             if (area) {
                                 for (const cell of area.children) {
                                     if (cell.classList.contains('cell')) {

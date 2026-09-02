@@ -192,7 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         chrome.scripting.executeScript({
                             target: { tabId },
                             function: function() {
-                                const nameEle = document.querySelector('#PlayerBlock > h2 > div.pull-left > span');
+                                const root = document.querySelector('#UserDetailBlock, #PlayerBlock');
+                                const nameEle = root ? root.querySelector('h2 > div.pull-left > span') : null;
                                 return nameEle ? nameEle.textContent.trim() : '';
                             }
                         }, function(results) {

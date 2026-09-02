@@ -399,18 +399,21 @@ function extractPersonalData() {
     var t0 = 100;
     try {
         startPdQuery = setInterval(() => {
-            let userName = document.querySelector("#PlayerBlock > h2 > div.pull-left > span");
+            const playerRoot = document.querySelector("#UserDetailBlock, #PlayerBlock");
+            const playerQuery = (selector) => playerRoot ? playerRoot.querySelector(selector) : null;
+            const playerQueryAll = (selector) => playerRoot ? playerRoot.querySelectorAll(selector) : [];
+            let userName = playerQuery("h2 > div.pull-left > span");
             if (userName) {
                 clearInterval(startPdQuery);
                 let assetIndex = 14;
-                let infos = document.querySelectorAll("#PlayerBlock > div:nth-child(3) > div");
+                let infos = playerQueryAll(":scope > div:nth-child(3) > div");
                 infos.forEach((div, index) => {
                     let label = div.querySelector("div.control-label");
                     if (label && label.textContent.includes("资源")) {
                         assetIndex = index + 1;
                     }
                 });
-                let userAssets = document.querySelectorAll(`#PlayerBlock > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span > span > span`);
+                let userAssets = playerQueryAll(`:scope > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span > span > span`);
                 userAssets.forEach((span) => {
                     if (span.querySelector("img")) {
                         if (span.querySelector("img").className.includes('gem') ||
@@ -424,7 +427,7 @@ function extractPersonalData() {
                         }
                     }
                 });
-                let trophy = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span");
+                let trophy = playerQuery(":scope > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span");
                 if (trophy) {
                     trophy.click(); // 20250120更新改为点击弹出
                     hoverBox(trophy);   // 鼠标悬浮展开奖杯信息
@@ -526,7 +529,7 @@ function extractPersonalData() {
                 row += 12;      // 空一行
 
                 /* 读资源数 */
-                let resources = document.querySelectorAll(`#PlayerBlock > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span:nth-child(1) > span`);
+                let resources = playerQueryAll(`:scope > div:nth-child(3) > div:nth-child(${assetIndex}) > div.col-xs-8.form-text > span:nth-child(1) > span`);
                 resources.forEach((span) => {
                     if (span.querySelector("img")) {
                         if (span.querySelector("img").className.includes('coin') && !span.querySelector("img").className.includes('arena')) {
@@ -588,11 +591,11 @@ function extractPersonalData() {
                 row += 4;
 
                 /* 读奖杯信息 */
-                let trophyList = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > div > div.popover-content > table");
-                let trs = trophyList.querySelectorAll('tr');
+                let trophyList = playerQuery(":scope > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > div > div.popover-content > table");
+                let trs = trophyList ? trophyList.querySelectorAll('tr') : [];
 
-                personalData[row][1] = parseInt(document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span").textContent, 10);
-                let rank = document.querySelector("#PlayerBlock > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > a");
+                personalData[row][1] = parseInt(playerQuery(":scope > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > span").textContent, 10);
+                let rank = playerQuery(":scope > div:nth-child(3) > div:nth-child(2) > div.col-xs-8.form-text > a");
                 if (rank && rank.textContent) {
                     personalData[row][3] = parseInt(rank.textContent.match(/\d+/), 10) || '';
                 }
@@ -1204,7 +1207,8 @@ function extractFriendQuestPages(maxPage) {
 /* ===== 好友信息提取 ===== */
 function extractFriendInfo(uid) {
     try {
-        const name = document.querySelector("#PlayerBlock > h2 > div.pull-left > span").textContent;
+        const playerRoot = document.querySelector("#UserDetailBlock, #PlayerBlock");
+        const name = playerRoot ? playerRoot.querySelector("h2 > div.pull-left > span").textContent : '';
         var friendInfo = [uid, name];
         console.log(friendInfo);
         chrome.runtime.sendMessage({ action: 'sendFriendInfo', friendInfo: friendInfo });
