@@ -1363,43 +1363,29 @@ function displayTables() {
                 });
             });
 
-            // 折扣输入框
+            // 折扣下拉框
             const epDiscountInput = document.getElementById('epDiscountInput');
             if (epDiscountInput) {
-                if (document.activeElement !== epDiscountInput) {
-                    epDiscountInput.value = '';
-                }
-                epDiscountInput.placeholder = epDiscount;
+                const validDiscounts = [0, 1.25, 2.5, 3.75, 5];
+                const normalizeDiscount = function(value) {
+                    const num = Number(value);
+                    if (validDiscounts.includes(num)) {
+                        return num;
+                    }
+                    return 0;
+                };
+                const selectedDiscount = normalizeDiscount(epDiscount);
+                epDiscountInput.value = String(selectedDiscount);
                 if (!epDiscountInput.dataset.bound) {
                     epDiscountInput.dataset.bound = '1';
                     const saveDiscount = function() {
-                        let val = parseFloat(epDiscountInput.value);
-                        if (isNaN(val) || val < 0) val = 0;
-                        if (val > 100) val = 100;
-                        epDiscountInput.value = val;
-                        epDiscountInput.placeholder = val;
+                        let val = normalizeDiscount(epDiscountInput.value);
+                        epDiscountInput.value = String(val);
                         chrome.storage.local.set({ epDiscount: val }, function() {
                             displayTables();
                         });
                     };
-                    epDiscountInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            saveDiscount();
-                            epDiscountInput.blur();
-                        }
-                    });
-                    epDiscountInput.addEventListener('blur', function() {
-                        if (epDiscountInput.value !== '') {
-                            saveDiscount();
-                        }
-                        epDiscountInput.value = '';
-                    });
-                    epDiscountInput.addEventListener('focus', function() {
-                        if (epDiscountInput.value === '') {
-                            epDiscountInput.value = epDiscountInput.placeholder;
-                        }
-                    });
+                    epDiscountInput.addEventListener('change', saveDiscount);
                 }
             }
 

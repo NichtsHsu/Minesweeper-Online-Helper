@@ -173,7 +173,15 @@
                         <span class="plainText">完美线的计算不考虑锦标赛</span><br>
                         <span class="plainText">点击“自定义”下方单元格可以手动设定目标，</span><br>
                         <span class="plainText">按“Enter”保存，按“Esc”或点击页面退出</span><br><br>
-                        <span class="plainText">商店折扣：-<input id="epDiscountInput" type="text" style="width:60px;text-align:center;">%</span><br>
+                        <span class="plainText">商店折扣：
+                            <select id="epDiscountInput" style="width:90px;text-align:center;">
+                                <option value="0">0%</option>
+                                <option value="1.25">1.25%</option>
+                                <option value="2.5">2.5%</option>
+                                <option value="3.75">3.75%</option>
+                                <option value="5">5%</option>
+                            </select>%
+                        </span><br>
                         <span class="plainText">额外ep：<input id="extraEpInput" type="text" style="width:100px;text-align:center;"></span><br><br>
                         <table id="tablePerfectLine" data-no-pagination></table>
                     </div>
