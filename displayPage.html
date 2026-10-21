@@ -21,13 +21,10 @@
     <script src="economy.js"></script>
     <script src="contact0.js"></script>
     <script src="cheapEquipment.js"></script>
-    <script src="monitor.js"></script>
     <script src="countBV.js"></script>
     <script src="distributionBV.js"></script>
-    <script src="monitorChat.js"></script>
     <script src="wheel.js"></script>
     <script src="bvsLine.js"></script>
-    <script src="removeSkin.js"></script>
 </head>
 <body id="mainBody" class="popupBody">
     <header class="popupHeader">
@@ -50,28 +47,6 @@
                 <button id="buttonDistributionBV500">统计我的游戏（500页）</button>
                 <button id="buttonBvsLine">观测3BV/s</button>
                 <button id="buttonCountBV">观测效率</button>
-                <button id="buttonRemoveSkin">移除特殊皮肤</button>
-            </div>
-        </section>
-
-        <section class="popupCard" id="advMode" style="display: none;">
-            <h2>高级工具</h2>
-            <div class="buttonStack">
-                <button id="buttonCheapEquip">查找低价装备</button>
-                <table id="equipCheap" style="display: none;"></table>
-                <span id="noEquipCheap" style="display:none">未找到适合拆碎片的装备</span>
-                <button id="buttonMonitor">监测价格</button>
-                <div id="monitorSet" style="display:none" class="monitorSet">
-                    <div id="flagMonitor" style="display:none;">0</div>
-                    <div class="inlineInput">
-                        <span>价格达到</span><input id="priceThreshold"><span>时提醒</span>
-                    </div>
-                    <span id="monitorNotice" style="display:none">请输入价格阈值！</span>
-                    <button id="buttonStopMonitor">停止监测</button>
-                </div>
-                <button id="buttonSave">保存当前版面</button>
-                <button id="buttonMonitorChat">监控聊天</button>
-                <span id="countBVResult" style="display:none"></span>
             </div>
         </section>
 

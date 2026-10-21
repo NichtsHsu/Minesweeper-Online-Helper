@@ -286,9 +286,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (request.clickNum) {
             outputHtml += '<br>效率上限：' + (request.bvResult[0] / request.clickNum * 100).toFixed(2) + '%';
         }
-        document.getElementById('countBVResult').innerHTML = outputHtml;
-        document.getElementById('countBVResult').style.display = 'block';
-        setPopupButtonState('buttonCountBV', 'success');
+        const countBVResult = document.getElementById('countBVResult');
+        if (countBVResult) {
+            countBVResult.innerHTML = outputHtml;
+            countBVResult.style.display = 'block';
+        }
+        setPopupButtonState('buttonCountBV', 'loading');
     }
 });
 

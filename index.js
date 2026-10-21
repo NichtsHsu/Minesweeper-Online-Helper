@@ -2418,11 +2418,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (configurableCoefIn) {
                         chrome.storage.local.set({ configurableCoef: configurableCoefIn });
                     }
-                    let advancedMode = result.advancedMode;
-                    const advancedModeIn = dataIn['advancedMode'];
-                    if (advancedModeIn) {
-                        chrome.storage.local.set({ advancedMode: advancedModeIn });
-                    }
                     /* 主题 */
                     let themeMap = result.themeMap;
                     const themeMapIn = dataIn['themeMap'];
@@ -2437,7 +2432,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (themeIn) {
                         chrome.storage.local.set({ theme: themeIn });
                     }
-                    chrome.storage.local.get(['pId', 'configurableCoef', 'tablePageSize', 'autoUpdate', 'themeMap', 'theme', 'advancedMode'], function (result) {
+                    chrome.storage.local.get(['pId', 'configurableCoef', 'tablePageSize', 'autoUpdate', 'themeMap', 'theme'], function (result) {
                         const restoredPid = result.pId || '';
                         const pIdNow = document.getElementById('pIdNow');
                         const personalId = document.getElementById('personalId');
